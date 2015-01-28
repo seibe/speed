@@ -1,0 +1,7 @@
+# Project Files
+*.hxproj
+
+# Grunt tools
+package.json
+Gruntfile.js
+/node_modules/

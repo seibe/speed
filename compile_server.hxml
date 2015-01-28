@@ -1,0 +1,6 @@
+-lib nodejs
+-main jp.seibe.speed.server.Main
+-cp src
+-dce full
+-js bin_server/app.js
+#-debug

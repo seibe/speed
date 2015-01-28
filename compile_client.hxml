@@ -1,0 +1,5 @@
+-main jp.seibe.speed.client.Main
+-cp src
+-dce full
+-js bin_client/main.js
+#-debug
