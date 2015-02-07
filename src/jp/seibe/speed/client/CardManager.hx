@@ -263,4 +263,9 @@ class CardManager
 		}
 	}
 	
+	public function close():Void
+	{
+		_isInit = false;
+	}
+	
 }

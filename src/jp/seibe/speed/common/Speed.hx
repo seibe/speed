@@ -20,11 +20,48 @@ typedef Card = {
 	pos:CardPos
 }
 
+@:enum
+abstract StampType(Int) {
+	var STACK = 0;
+	var URGE = 1;
+	var GLAD = 2;
+	var SAD = 3;
+	
+	@:to
+	private function toInt():Int {
+		return this;
+	}
+}
+
 enum CardDragEvent {
 	DRAG_BEGIN(pos:CardPos);
 	DRAG_MOVE(pos:CardPos, dx:Int, dy:Int);
 	DRAG_END(from:CardPos, to:CardPos);
 	DRAG_CANCEL(pos:CardPos);
+}
+
+enum GameClientState {
+	INIT;
+	INITED;
+	CONNECT;
+	CONNECTING;
+	CONNECTED;
+	MATCHING;
+	NEGOTIATE;
+	NEGOTIATING;
+	NEGOTIATED;
+	INGAME_INIT;
+	INGAME_LOOP;
+	INGAME_START(timestamp:Float);
+	FINISHED;
+	ERROR(prev:GameClientState);
+	NOTHING;
+}
+
+enum ClientScene {
+	START;
+	CONNECTING;
+	INGAME(clientType:ClientType);
 }
 
 @:enum
@@ -49,6 +86,7 @@ enum Proto {
 	ERROR(errno:Int);
 	UPDATE(diff:Array<Card>);
 	DRAG(e:CardDragEvent);
+	STAMP(stampType:Int);
 }
 
 @:enum
@@ -62,6 +100,7 @@ abstract RemoteProto(Int) {
 	var ERROR	= 7;
 	var UPDATE	= 8;
 	var DRAG	= 9;
+	var STAMP	= 10;
 	
 	@:to
 	private function toInt():Int {

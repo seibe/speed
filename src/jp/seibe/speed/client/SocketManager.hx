@@ -75,7 +75,9 @@ class SocketManager
 	public function send(msg:Proto):Bool
 	{
 		// 接続前なら破棄
-		if (_status != SocketStatus.CONNECT) throw "エラー: 未接続での送信要求。";
+		if (_status != SocketStatus.CONNECT) {
+			return false;
+		}
 		
 		switch (msg) {
 			case Proto.PING:
@@ -175,7 +177,12 @@ class SocketManager
 				}
 				//
 			case Proto.FINISH:
-				trace("未実装: send-finish");
+				_sendDataList.push(RemoteProto.FINISH);
+				
+			case Proto.STAMP(stampType):
+				_sendDataList.push(RemoteProto.STAMP);
+				_sendDataList.push(stampType & 0xf);
+				
 				//
 			case Proto.ACK:
 				trace("未実装: send-ack");
@@ -184,7 +191,7 @@ class SocketManager
 				trace("未実装: send-nak");
 				//
 			default:
-				trace("send-error");
+				trace("send-error: 0");
 				return false;
 		}
 		
@@ -197,8 +204,12 @@ class SocketManager
 				data[i] = (i * 2 + 1) == dataLength ? _sendDataList[i * 2] << 4 : (_sendDataList[i * 2] << 4) + _sendDataList[i * 2 + 1];
 			}
 			
-			trace("send (" + byteLength + " byte)");
-			_ws.send(data);
+			//trace("send (" + byteLength + " byte)");
+			if (_ws.send(data) == false) {
+				trace("send-error: 1");
+				close();
+				return false;
+			}
 			_sendDataList = new Array<Int>();
 		}
 		
@@ -320,6 +331,10 @@ class SocketManager
 						return Proto.DRAG( CardDragEvent.DRAG_CANCEL( intToPos(from) ) );
 				}
 				
+			case RemoteProto.STAMP:
+				var type:Int = _receiveDataList.shift();
+				return Proto.STAMP(type);
+				
 			default:
 				return null;
 		}
@@ -337,6 +352,8 @@ class SocketManager
 		
 		_status = SocketStatus.CLOSE;
 		_ws = null;
+		_sendDataList = new Array<Int>();
+		_receiveDataList = new Array<Int>();
 	}
 	
 	private function onReceive(e:{data:Dynamic}):Void
@@ -348,17 +365,17 @@ class SocketManager
 			_receiveDataList.push(bytes[i] & 0xf);
 		}
 		
-		trace("receive: (" + bytes.byteLength + " byte)");
+		//trace("receive: (" + bytes.byteLength + " byte)");
 	}
 	
 	private function onClose(e:Dynamic):Void
 	{
-		//
+		_status = SocketStatus.CLOSE;
 	}
 	
 	private function onError(e:Dynamic):Void
 	{
-		//
+		_status = SocketStatus.CLOSE;
 		throw "実行中にソケット接続が閉じられました。";
 	}
 	

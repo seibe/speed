@@ -3,31 +3,65 @@
 <head>
 	<meta charset="utf-8"/>
 	<title>Speed_client</title>
-	<link rel="stylesheet" href="style.min.css" />
+	<link rel="stylesheet" href="style.css" />
 	<script src="zepto.min.js"></script>
 	<script src="main.js"></script>
 </head>
 <body>
-	<div id="stage">
-		<ul id="guest-area">
-			<li><img id="guest-hand-3" alt="" src="img/card/null.png" /></li>
-			<li><img id="guest-hand-2" alt="" src="img/card/null.png" /></li>
-			<li><img id="guest-hand-1" alt="" src="img/card/null.png" /></li>
-			<li><img id="guest-hand-0" alt="" src="img/card/null.png" /></li>
-			<li><img id="guest-talon" alt="" src="img/card/back.png" /></li>
-		</ul>
-		<ul id="field-area">
-			<li><img id="field-0" alt="" src="img/card/null.png" /></li>
-			<li><img id="field-1" alt="" src="img/card/null.png" /></li>
-		</ul>
-		<ul id="host-area">
-			<li><img id="host-talon" alt="" src="img/card/back.png" /></li>
-			<li><img id="host-hand-0" alt="" src="img/card/null.png" /></li>
-			<li><img id="host-hand-1" alt="" src="img/card/null.png" /></li>
-			<li><img id="host-hand-2" alt="" src="img/card/null.png" /></li>
-			<li><img id="host-hand-3" alt="" src="img/card/null.png" /></li>
-		</ul>
+    <!-- スタート画面 -->
+    <div id="start" class="stage">
+        <div class="stage-cell">
+            <h1><img class="start-logo" alt="SPEED" src="img/logo.png" /></h1>
+            <div class="start-buttons">
+                <button id="start-button-online"></button>
+                <button id="start-button-offline" class="disable"></button>
+            </div>
+            <div class="start-loader hidden"><div class="start-loader-anim"></div></div>
+        </div>
+    </div>
+
+    <!-- ゲーム画面 -->
+	<div id="stage" class="stage hidden">
+        <div class="stage-cell">
+		    <ul id="stage-enemy" class="clearfix">
+			    <li><img id="stage-enemy-hand-3" alt="" src="img/card/null.png" /></li>
+			    <li><img id="stage-enemy-hand-2" alt="" src="img/card/null.png" /></li>
+			    <li><img id="stage-enemy-hand-1" alt="" src="img/card/null.png" /></li>
+			    <li><img id="stage-enemy-hand-0" alt="" src="img/card/null.png" /></li>
+			    <li class="stage-talon"><span id="stage-enemy-talon-length">22</span><img id="stage-enemy-talon" alt="" src="img/card/back.png" /></li>
+		    </ul>
+		    <ul id="stage-field" class="clearfix">
+			    <li><img id="stage-field-0" alt="" src="img/card/null.png" /></li>
+			    <li><img id="stage-field-1" alt="" src="img/card/null.png" /></li>
+		    </ul>
+		    <ul id="stage-player" class="clearfix">
+			    <li class="stage-talon"><span id="stage-player-talon-length">22</span><img id="stage-player-talon" alt="" src="img/card/back.png" /></li>
+			    <li><img id="stage-player-hand-0" alt="" src="img/card/null.png" /></li>
+			    <li><img id="stage-player-hand-1" alt="" src="img/card/null.png" /></li>
+			    <li><img id="stage-player-hand-2" alt="" src="img/card/null.png" /></li>
+			    <li><img id="stage-player-hand-3" alt="" src="img/card/null.png" /></li>
+		    </ul>
+        </div>
 	</div>
+
+    <!-- スタンプ -->
+    <div id="stamp" class="hidden">
+        <ul class="stamp-list clearfix">
+            <li><button id="stamp-button-stack">出せない</button></li>
+            <li><button id="stamp-button-urge">出せる</button></li>
+            <li><button id="stamp-button-glad">よゆう</button></li>
+            <li><button id="stamp-button-sad">あせる</button></li>
+        </ul>
+    </div>
+    <div id="stampcard">
+    </div>
+
+    <!-- 通知系 -->
+    <div id="notify"></div>
 	<div id="dialog"></div>
+
+    <!-- デバッグ用出力 -->
+    <div id="console"></div>
+
 </body>
 </html>

@@ -18,10 +18,7 @@ body {
 	box-sizing: border-box;
 	overflow: hidden;
     position: relative;
-    -webkit-user-select: none;
-       -moz-user-select: none;
-        -ms-user-select: none;
-            user-select: none;
+    user-select: none;
 }
 
 li {
@@ -94,27 +91,12 @@ button.disable {
     background-size: 100%;
 }
 
-@-webkit-keyframes guruguru {
-
-	0% {
-		-webkit-transform: rotate(0deg);
-		        transform: rotate(0deg);
-	}
-
-	100% {
-		-webkit-transform: rotate(360deg);
-		        transform: rotate(360deg);
-	}
-}
-
 @keyframes guruguru {
     0% {
-        -webkit-transform: rotate(0deg);
-                transform: rotate(0deg);
+        transform: rotate(0deg);
     }
     100% {
-        -webkit-transform: rotate(360deg);
-                transform: rotate(360deg);
+        transform: rotate(360deg);
     }
 }
 .start-loader {
@@ -142,10 +124,8 @@ button.disable {
     border-radius: 10.2em 0 0 10.2em;
     top: -0.1em;
     left: -0.1em;
-    -webkit-transform-origin: 5.2em 5.1em;
-            transform-origin: 5.2em 5.1em;
-    -webkit-animation: guruguru 2s infinite ease 1.5s;
-            animation: guruguru 2s infinite ease 1.5s;
+    transform-origin: 5.2em 5.1em;
+    animation: guruguru 2s infinite ease 1.5s;
 }
 .start-loader-anim {
     font-size: 11px;
@@ -162,10 +142,8 @@ button.disable {
     border-radius: 0 10.2em 10.2em 0;
     top: -0.1em;
     left: 5.1em;
-    -webkit-transform-origin: 0px 5.1em;
-            transform-origin: 0px 5.1em;
-    -webkit-animation: guruguru 2s infinite ease;
-            animation: guruguru 2s infinite ease;
+    transform-origin: 0px 5.1em;
+    animation: guruguru 2s infinite ease;
 }
 
 
@@ -264,34 +242,9 @@ button.disable {
 }
 
 
-@-webkit-keyframes ochiru {
-
-	0% {
-		-webkit-transform: translate3d(0,-120px,0);
-		        transform: translate3d(0,-120px,0);
-		opacity: 1.0;
-	}
-
-	70% {
-		opacity: 1.0;
-	}
-
-	90% {
-		opacity: 0.0;
-	}
-
-	100% {
-		-webkit-transform: translate3d(0,200px,0);
-		        transform: translate3d(0,200px,0);
-		opacity: 0.0;
-	}
-}
-
-
 @keyframes ochiru {
     0% {
-        -webkit-transform: translate3d(0,-120px,0);
-                transform: translate3d(0,-120px,0);
+        transform: translate3d(0,-120px,0);
         opacity: 1.0;
     }
     70% {
@@ -301,8 +254,7 @@ button.disable {
         opacity: 0.0;
     }
     100% {
-        -webkit-transform: translate3d(0,200px,0);
-                transform: translate3d(0,200px,0);
+        transform: translate3d(0,200px,0);
         opacity: 0.0;
     }
 }
@@ -315,8 +267,7 @@ button.disable {
 #stampcard img {
     width: 80px;
     height: 80px;
-    -webkit-animation: ochiru 1.75s ease-out;
-            animation: ochiru 1.75s ease-out;
+    animation: ochiru 1.75s ease-out;
     position: absolute;
     top: 0;
     left: 0;
@@ -390,10 +341,7 @@ button.disable {
     display: inline-block;
     position: relative;
     z-index: 12;
-    -webkit-user-select: text;
-       -moz-user-select: text;
-        -ms-user-select: text;
-            user-select: text;
+    user-select: text;
 }
 #console:empty {
     display: none;

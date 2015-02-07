@@ -18,8 +18,6 @@ class Main
 	
 	private function init(e:Dynamic):Void
 	{
-		trace("init window");
-		
 		_client = new GameClient();
 		_client.run();
 	}

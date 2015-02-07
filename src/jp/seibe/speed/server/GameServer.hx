@@ -91,11 +91,11 @@ class GameServer
 		}
 		
 		var opp = getOpponent(ws);
-		var bytes:Uint8Array = new Uint8Array(data);
+		//var bytes:Uint8Array = new Uint8Array(data);
 		if (opp.ws != null) {
 			if (ws == opp.comb[0])trace("pass data from host.");
 			else trace("pass data from guest.");
-			opp.ws.send(bytes);
+			opp.ws.send(data);
 			/*
 			for (i in 0...bytes.length) {
 				trace("message-" + i, bytes[i] >> 4, bytes[i] & 0xf);

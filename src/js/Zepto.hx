@@ -82,8 +82,8 @@ extern class Zepto implements ArrayAccess<Element>
 	function addClass(name:String):ZeptoSelf;
 	
 	function after(content:String):ZeptoSelf;
-	function append(content:String):ZeptoSelf;
-	function appendTo(target:String):ZeptoSelf;
+	function append(content:Dynamic):ZeptoSelf;
+	function appendTo(target:Dynamic):ZeptoSelf;
 	
 	@:overload(function(name:String, it:Int->String->String):ZeptoSelf{})
 	@:overload(function(name:String, value:String):ZeptoSelf{})

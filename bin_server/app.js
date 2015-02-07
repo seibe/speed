@@ -107,10 +107,9 @@ jp.seibe.speed.server.GameServer.prototype = {
 			return;
 		}
 		var opp = this.getOpponent(ws);
-		var bytes = new Uint8Array(data);
 		if(opp.ws != null) {
 			if(ws == opp.comb[0]) console.log("pass data from host."); else console.log("pass data from guest.");
-			opp.ws.send(bytes);
+			opp.ws.send(data);
 		}
 	}
 	,onClose: function(ws,code,msg) {

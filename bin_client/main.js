@@ -1,4 +1,5 @@
 (function () { "use strict";
+var $estr = function() { return js.Boot.__string_rec(this,''); };
 function $extend(from, fields) {
 	function Inherit() {} Inherit.prototype = from; var proto = new Inherit();
 	for (var name in fields) proto[name] = fields[name];
@@ -30,6 +31,9 @@ var Std = function() { };
 Std.__name__ = true;
 Std.string = function(s) {
 	return js.Boot.__string_rec(s,"");
+};
+Std["int"] = function(x) {
+	return x | 0;
 };
 Std.random = function(x) {
 	if(x <= 0) return 0; else return Math.floor(Math.random() * x);
@@ -503,11 +507,40 @@ jp.seibe.speed.client.CardManager.prototype = {
 			}
 		}
 	}
+	,close: function() {
+		this._isInit = false;
+	}
 };
 jp.seibe.speed.client.DomManager = function() {
 	this._window = window;
+	this._notify = $("#notify");
+	this._notifyTimer = null;
 	this._dialog = $("#dialog");
-	this.setClientType(0);
+	this._console = $("#console");
+	this._draggable = false;
+	this._stampCard = $("#stampcard");
+	var this1;
+	this1 = new Array(4);
+	this._stampList = this1;
+	var val = $("<img src=\"./img/stamp/stack.png\" alt=\"出せる\" />");
+	this._stampList[0] = val;
+	var val1 = $("<img src=\"./img/stamp/urge.png\" alt=\"出せない\" />");
+	this._stampList[1] = val1;
+	var val2 = $("<img src=\"./img/stamp/glad.png\" alt=\"よゆう\" />");
+	this._stampList[2] = val2;
+	var val3 = $("<img src=\"./img/stamp/sad.png\" alt=\"あせる\" />");
+	this._stampList[3] = val3;
+	var this2;
+	this2 = new Array(4);
+	this._stampButtonList = this2;
+	var val4 = $("#stamp-button-stack");
+	this._stampButtonList[0] = val4;
+	var val5 = $("#stamp-button-urge");
+	this._stampButtonList[1] = val5;
+	var val6 = $("#stamp-button-glad");
+	this._stampButtonList[2] = val6;
+	var val7 = $("#stamp-button-sad");
+	this._stampButtonList[3] = val7;
 	this._cardSrcMap = new haxe.ds.EnumValueMap();
 	this._cardSrcMap.set(jp.seibe.speed.common.CardSuit.NONE,"img/card/null.png");
 	var _g = 0;
@@ -524,30 +557,77 @@ jp.seibe.speed.client.DomManager = function() {
 		var key3 = jp.seibe.speed.common.CardSuit.HEART(i);
 		this._cardSrcMap.set(key3,"img/card/h" + istr + ".png");
 	}
+	this.setScene(jp.seibe.speed.common.ClientScene.START);
 };
 jp.seibe.speed.client.DomManager.__name__ = true;
 jp.seibe.speed.client.DomManager.prototype = {
-	setClientType: function(clientType) {
-		this._clientType = clientType;
-		this._cardDomMap = new haxe.ds.EnumValueMap();
-		var _g = 0;
-		while(_g < 2) {
-			var i = _g++;
-			var pre;
-			if(i == jp.seibe.speed.common._Speed.ClientType_Impl_.toInt(this._clientType)) pre = "#host-"; else pre = "#guest-";
-			var key = jp.seibe.speed.common.CardPos.TALON(i);
-			var value = $(pre + "talon");
-			this._cardDomMap.set(key,value);
-			var key1 = jp.seibe.speed.common.CardPos.FIELD(i ^ this._clientType);
-			var value1 = $("#field-" + (i == null?"null":"" + i));
-			this._cardDomMap.set(key1,value1);
+	on: function(callback) {
+		this._changeSceneFunc = callback;
+	}
+	,setScene: function(scene) {
+		var _g = this;
+		switch(scene[1]) {
+		case 0:
+			$("#stage, .start-loader").addClass("hidden");
+			$("#start, .start-buttons").removeClass("hidden");
+			$("#start-button-online").on("click",function(e) {
+				haxe.Log.trace("click!",{ fileName : "DomManager.hx", lineNumber : 96, className : "jp.seibe.speed.client.DomManager", methodName : "setScene"});
+				if(_g._changeSceneFunc != null) _g._changeSceneFunc(jp.seibe.speed.common.GameClientState.CONNECT);
+			});
+			if(this._consoleTimer != null) this._consoleTimer.stop();
+			break;
+		case 1:
+			$("#stage, .start-buttons").addClass("hidden");
+			$("#start, .start-loader").removeClass("hidden");
+			if(this._consoleTimer != null) this._consoleTimer.stop();
+			break;
+		case 2:
+			var clientType = scene[2];
+			$("#start").addClass("hidden");
+			$("#stage").removeClass("hidden");
+			this._clientType = clientType;
+			var this1;
+			this1 = new Array(2);
+			this._talonLength = this1;
+			this._cardDomMap = new haxe.ds.EnumValueMap();
 			var _g1 = 0;
-			while(_g1 < 4) {
-				var j = _g1++;
-				var key2 = jp.seibe.speed.common.CardPos.HAND(i,j);
-				var value2 = $(pre + "hand-" + (j == null?"null":"" + j));
-				this._cardDomMap.set(key2,value2);
+			while(_g1 < 2) {
+				var i = _g1++;
+				var pre;
+				if(i == jp.seibe.speed.common._Speed.ClientType_Impl_.toInt(this._clientType)) pre = "#stage-player-"; else pre = "#stage-enemy-";
+				var val = $(pre + "talon-length");
+				this._talonLength[i] = val;
+				var key = jp.seibe.speed.common.CardPos.TALON(i);
+				var value = $(pre + "talon");
+				this._cardDomMap.set(key,value);
+				var key1 = jp.seibe.speed.common.CardPos.FIELD(i ^ this._clientType);
+				var value1 = $("#stage-field-" + (i == null?"null":"" + i));
+				this._cardDomMap.set(key1,value1);
+				var _g11 = 0;
+				while(_g11 < 4) {
+					var j = _g11++;
+					var key2 = jp.seibe.speed.common.CardPos.HAND(i,j);
+					var value2 = $(pre + "hand-" + (j == null?"null":"" + j));
+					this._cardDomMap.set(key2,value2);
+				}
 			}
+			var _g2 = 0;
+			while(_g2 < 2) {
+				var i1 = _g2++;
+				this.drawCardAt(jp.seibe.speed.common.CardPos.FIELD(i1),jp.seibe.speed.common.CardSuit.NONE);
+			}
+			break;
+		}
+	}
+	,notify: function(text,ms) {
+		var _g = this;
+		this._notify.text(text);
+		if(ms > 0) {
+			if(this._notifyTimer != null) this._notifyTimer.stop();
+			this._notifyTimer = haxe.Timer.delay(function() {
+				_g._notify.text("");
+				_g._notifyTimer = null;
+			},ms);
 		}
 	}
 	,drawCard: function(cardList) {
@@ -569,13 +649,51 @@ jp.seibe.speed.client.DomManager.prototype = {
 			this._cardDomMap.get(pos).attr("src",this._cardSrcMap.get(suit));
 		}
 	}
+	,drawTalon: function(lengthList) {
+		var _g = 0;
+		while(_g < 2) {
+			var i = _g++;
+			if(lengthList[i] == 0) this._talonLength[i].text(""); else this._talonLength[i].text(Std.string(lengthList[i]));
+		}
+	}
+	,drawStamp: function(stampType) {
+		var stamp = this._stampList[stampType].clone();
+		haxe.Log.trace("clone",{ fileName : "DomManager.hx", lineNumber : 215, className : "jp.seibe.speed.client.DomManager", methodName : "drawStamp"});
+		stamp.css({ left : Std.string(Std["int"](Math.random() * (this._window.innerWidth - 120))) + "px"});
+		stamp.on("animationend webkitAnimationEnd",function(e) {
+			stamp.remove();
+		});
+		this._stampCard.append(stamp);
+	}
 	,drawDialog: function(str) {
 		if(this._dialogStr == str) return;
 		if(str == null || str.length == 0) this._dialog.html(""); else this._dialog.html("<span>" + str + "</span>");
 		this._dialogStr = str;
 	}
+	,enableStamp: function(listner) {
+		$("#stamp").removeClass("hidden");
+		var _g = 0;
+		while(_g < 4) {
+			var i = [_g++];
+			this._stampButtonList[i[0]].on("click",(function(i) {
+				return function(e) {
+					listner(i[0]);
+				};
+			})(i));
+		}
+	}
+	,disableStamp: function() {
+		$("#stamp").addClass("hidden");
+		var _g = 0;
+		while(_g < 4) {
+			var i = _g++;
+			this._stampButtonList[i].off("click");
+		}
+	}
 	,enableDrag: function(listner) {
 		var _g = this;
+		if(this._draggable == true) return;
+		this._draggable = true;
 		this._dragListener = listner;
 		this._dragIdMap = new haxe.ds.ObjectMap();
 		this._dragPointMap = new haxe.ds.ObjectMap();
@@ -607,6 +725,8 @@ jp.seibe.speed.client.DomManager.prototype = {
 		}
 	}
 	,disableDrag: function() {
+		if(this._draggable == false) return;
+		this._draggable = false;
 		var _g = 0;
 		while(_g < 2) {
 			var i = _g++;
@@ -631,7 +751,7 @@ jp.seibe.speed.client.DomManager.prototype = {
 		this._dragIdMap = null;
 		this._dragPointMap = null;
 	}
-	,dragCard: function(e) {
+	,dragCard: function(e,client) {
 		switch(e[1]) {
 		case 0:
 			var pos = e[2];
@@ -741,7 +861,7 @@ jp.seibe.speed.client.DomManager.prototype = {
 	}
 	,whereStack: function(from) {
 		var offset = this._cardDomMap.get(from).offset();
-		var distArea = 3600;
+		var distArea = 8100;
 		var min = distArea;
 		var distList;
 		var targetOffset;
@@ -809,35 +929,10 @@ jp.seibe.speed.client.DomManager.prototype = {
 		return null;
 	}
 };
-jp.seibe.speed.client.GameClientState = { __ename__ : true, __constructs__ : ["INIT","CONNECT","CONNECTING","CONNECTED","MATCHING","NEGOTIATE","NEGOTIATING","NEGOTIATED","INGAME_INIT","INGAME_LOOP","INGAME_START","FINISHED","ERROR"] };
-jp.seibe.speed.client.GameClientState.INIT = ["INIT",0];
-jp.seibe.speed.client.GameClientState.INIT.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.CONNECT = ["CONNECT",1];
-jp.seibe.speed.client.GameClientState.CONNECT.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.CONNECTING = ["CONNECTING",2];
-jp.seibe.speed.client.GameClientState.CONNECTING.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.CONNECTED = ["CONNECTED",3];
-jp.seibe.speed.client.GameClientState.CONNECTED.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.MATCHING = ["MATCHING",4];
-jp.seibe.speed.client.GameClientState.MATCHING.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.NEGOTIATE = ["NEGOTIATE",5];
-jp.seibe.speed.client.GameClientState.NEGOTIATE.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.NEGOTIATING = ["NEGOTIATING",6];
-jp.seibe.speed.client.GameClientState.NEGOTIATING.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.NEGOTIATED = ["NEGOTIATED",7];
-jp.seibe.speed.client.GameClientState.NEGOTIATED.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.INGAME_INIT = ["INGAME_INIT",8];
-jp.seibe.speed.client.GameClientState.INGAME_INIT.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.INGAME_LOOP = ["INGAME_LOOP",9];
-jp.seibe.speed.client.GameClientState.INGAME_LOOP.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.INGAME_START = function(timestamp) { var $x = ["INGAME_START",10,timestamp]; $x.__enum__ = jp.seibe.speed.client.GameClientState; return $x; };
-jp.seibe.speed.client.GameClientState.FINISHED = ["FINISHED",11];
-jp.seibe.speed.client.GameClientState.FINISHED.__enum__ = jp.seibe.speed.client.GameClientState;
-jp.seibe.speed.client.GameClientState.ERROR = function(prev) { var $x = ["ERROR",12,prev]; $x.__enum__ = jp.seibe.speed.client.GameClientState; return $x; };
 jp.seibe.speed.client.GameClient = function() {
 	this.PING_MAX = 10;
 	this.FRAME_RATE = 60;
-	this._state = jp.seibe.speed.client.GameClientState.INIT;
+	this._state = jp.seibe.speed.common.GameClientState.INIT;
 	this._prevDragTime = 0;
 };
 jp.seibe.speed.client.GameClient.__name__ = true;
@@ -846,60 +941,64 @@ jp.seibe.speed.client.GameClient.prototype = {
 		this._timer = new haxe.Timer(1000 / this.FRAME_RATE | 0);
 		this._timer.run = $bind(this,this.onEnterFrame);
 	}
-	,stop: function() {
-		this._timer.stop();
-		this._timer = null;
-	}
 	,onEnterFrame: function() {
 		var _g1 = this;
-		haxe.Log.trace(this._state,{ fileName : "GameClient.hx", lineNumber : 57, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame"});
 		{
 			var _g = this._state;
 			switch(_g[1]) {
 			case 0:
 				this._cardManager = new jp.seibe.speed.client.CardManager();
 				this._domManager = new jp.seibe.speed.client.DomManager();
+				this._domManager.on(function(state) {
+					_g1._state = state;
+				});
 				this._socketManager = new jp.seibe.speed.client.SocketManager();
-				this._state = jp.seibe.speed.client.GameClientState.CONNECT;
+				this._state = jp.seibe.speed.common.GameClientState.INITED;
 				break;
 			case 1:
-				this._socketManager.connect(function(success) {
-					if(success) _g1._state = jp.seibe.speed.client.GameClientState.CONNECTED; else _g1._state = jp.seibe.speed.client.GameClientState.ERROR(_g1._state);
-				});
-				this._state = jp.seibe.speed.client.GameClientState.CONNECTING;
 				break;
 			case 2:
+				this._socketManager.connect(function(success) {
+					if(success) _g1._state = jp.seibe.speed.common.GameClientState.CONNECTED; else {
+						_g1._domManager.notify("サーバー接続中にエラーが発生しました。",3000);
+						_g1._state = jp.seibe.speed.common.GameClientState.INIT;
+					}
+				});
+				this._domManager.setScene(jp.seibe.speed.common.ClientScene.CONNECTING);
+				this._domManager.notify("サーバーに接続中です",0);
+				this._state = jp.seibe.speed.common.GameClientState.CONNECTING;
 				break;
 			case 3:
-				this._state = jp.seibe.speed.client.GameClientState.MATCHING;
 				break;
 			case 4:
+				this._state = jp.seibe.speed.common.GameClientState.MATCHING;
+				this._domManager.notify("対戦相手を待っています",0);
+				break;
+			case 5:
 				var res = this._socketManager.receive();
 				if(res != null) switch(res[1]) {
 				case 4:
 					var clientType = res[2];
-					haxe.Log.trace("type",{ fileName : "GameClient.hx", lineNumber : 88, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame", customParams : [clientType]});
+					haxe.Log.trace("type",{ fileName : "GameClient.hx", lineNumber : 85, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame", customParams : [clientType]});
 					this._clientType = clientType;
-					this._state = jp.seibe.speed.client.GameClientState.NEGOTIATE;
+					this._state = jp.seibe.speed.common.GameClientState.NEGOTIATE;
 					break;
 				default:
-					this._state = jp.seibe.speed.client.GameClientState.ERROR(this._state);
+					this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
 				}
 				break;
-			case 5:
+			case 6:
 				this._delayTime = 0;
 				this._diffTime = 0;
 				this._pingCount = 0;
-				haxe.Log.trace("PING!",{ fileName : "GameClient.hx", lineNumber : 103, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame"});
 				this._prevPingTime = new Date().getTime();
-				this._socketManager.send(jp.seibe.speed.common.Proto.PING);
-				this._state = jp.seibe.speed.client.GameClientState.NEGOTIATING;
+				if(this._socketManager.send(jp.seibe.speed.common.Proto.PING) == true) this._state = jp.seibe.speed.common.GameClientState.NEGOTIATING; else this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
 				break;
-			case 6:
+			case 7:
 				var res1 = this._socketManager.receive();
 				if(res1 != null) switch(res1[1]) {
 				case 0:
-					this._socketManager.send(jp.seibe.speed.common.Proto.PONG(new Date().getTime()));
+					if(this._socketManager.send(jp.seibe.speed.common.Proto.PONG(new Date().getTime())) == false) this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
 					break;
 				case 1:
 					var timestamp = res1[2];
@@ -911,58 +1010,74 @@ jp.seibe.speed.client.GameClient.prototype = {
 					this._diffTime += diff;
 					if(this._pingCount < this.PING_MAX) {
 						this._prevPingTime = new Date().getTime();
-						this._socketManager.send(jp.seibe.speed.common.Proto.PING);
+						if(this._socketManager.send(jp.seibe.speed.common.Proto.PING) == false) this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
 					} else {
 						this._delayTime = this._delayTime / this.PING_MAX;
 						this._diffTime = (this._diffTime / this.PING_MAX / 1000 | 0) * 1000;
-						haxe.Log.trace("ズレ: ",{ fileName : "GameClient.hx", lineNumber : 137, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame", customParams : [this._delayTime,this._diffTime]});
-						this._state = jp.seibe.speed.client.GameClientState.NEGOTIATED;
+						haxe.Log.trace("ズレ: ",{ fileName : "GameClient.hx", lineNumber : 140, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame", customParams : [this._delayTime,this._diffTime]});
+						this._state = jp.seibe.speed.common.GameClientState.NEGOTIATED;
 					}
 					break;
 				default:
-					this._state = jp.seibe.speed.client.GameClientState.ERROR(this._state);
+					this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
 				}
 				break;
-			case 7:
-				this._state = jp.seibe.speed.client.GameClientState.INGAME_INIT;
-				break;
 			case 8:
-				this._domManager.setClientType(this._clientType);
+				this._state = jp.seibe.speed.common.GameClientState.INGAME_INIT;
+				break;
+			case 9:
+				this._domManager.setScene(jp.seibe.speed.common.ClientScene.INGAME(this._clientType));
+				this._domManager.enableStamp($bind(this,this.onTapStamp));
+				this._domManager.notify("対戦相手が見つかりました。対戦を開始します。",3000);
 				if(this._clientType == 0) {
 					var cardList = this._cardManager.deal();
 					this._domManager.drawCard(cardList);
-					this._socketManager.send(jp.seibe.speed.common.Proto.UPDATE(cardList));
+					if(this._socketManager.send(jp.seibe.speed.common.Proto.UPDATE(cardList)) == false) {
+						this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
+						return;
+					}
 					var target = new Date().getTime() + 5000 + this._delayTime;
-					this._socketManager.send(jp.seibe.speed.common.Proto.START(target + this._diffTime));
-					this._state = jp.seibe.speed.client.GameClientState.INGAME_START(target);
-				} else this._state = jp.seibe.speed.client.GameClientState.INGAME_LOOP;
+					if(this._socketManager.send(jp.seibe.speed.common.Proto.START(target + this._diffTime)) == false) {
+						this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
+						return;
+					}
+					this._state = jp.seibe.speed.common.GameClientState.INGAME_START(target);
+				} else this._state = jp.seibe.speed.common.GameClientState.INGAME_LOOP;
 				break;
-			case 9:
+			case 10:
 				var res2 = this._socketManager.receive();
 				while(res2 != null) {
 					switch(res2[1]) {
 					case 0:
-						this._socketManager.send(jp.seibe.speed.common.Proto.PONG(new Date().getTime()));
+						if(this._socketManager.send(jp.seibe.speed.common.Proto.PONG(new Date().getTime())) == false) {
+							this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
+							return;
+						}
 						break;
 					case 8:
 						var diff1 = res2[2];
 						this._cardManager.update(diff1);
 						this._domManager.drawCard(this._cardManager.getDiff());
+						this._domManager.drawTalon(this._cardManager.getTalonLength());
 						break;
 					case 5:
 						var target1 = res2[2];
 						this._domManager.disableDrag();
-						this._state = jp.seibe.speed.client.GameClientState.INGAME_START(target1);
+						this._state = jp.seibe.speed.common.GameClientState.INGAME_START(target1);
 						break;
 					case 9:
 						var e = res2[2];
-						this._domManager.dragCard(e);
+						this._domManager.dragCard(e,1 - this._clientType);
+						break;
+					case 10:
+						var type = res2[2];
+						this._domManager.drawStamp(type);
 						break;
 					case 6:
-						this._state = jp.seibe.speed.client.GameClientState.FINISHED;
-						break;
+						this._state = jp.seibe.speed.common.GameClientState.FINISHED;
+						return;
 					default:
-						this._state = jp.seibe.speed.client.GameClientState.ERROR(this._state);
+						this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
 						return;
 					}
 					res2 = this._socketManager.receive();
@@ -970,41 +1085,102 @@ jp.seibe.speed.client.GameClient.prototype = {
 				var cardList1 = this._cardManager.getDiff();
 				if(cardList1 != null && cardList1.length > 0) {
 					this._domManager.drawCard(cardList1);
-					this._socketManager.send(jp.seibe.speed.common.Proto.UPDATE(cardList1));
+					if(this._socketManager.send(jp.seibe.speed.common.Proto.UPDATE(cardList1)) == false) {
+						this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
+						return;
+					}
 				}
 				if(this._cardManager.isClose()) {
-					haxe.Log.trace("試合終了",{ fileName : "GameClient.hx", lineNumber : 216, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame"});
-					this._socketManager.send(jp.seibe.speed.common.Proto.FINISH);
-					this._state = jp.seibe.speed.client.GameClientState.FINISHED;
+					if(this._socketManager.send(jp.seibe.speed.common.Proto.FINISH) == false) {
+						this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
+						return;
+					}
+					if(this._cardManager.getTalonLength()[this._clientType] == 0) {
+						if(this._cardManager.getTalonLength()[1 - this._clientType] == 0) this._domManager.drawDialog("引き分け"); else this._domManager.drawDialog("勝利");
+					} else this._domManager.drawDialog("敗北");
+					haxe.Timer.delay(function() {
+						_g1._state = jp.seibe.speed.common.GameClientState.FINISHED;
+					},3000);
+					this._state = jp.seibe.speed.common.GameClientState.NOTHING;
+					return;
 				} else if(this._clientType == 0 && this._cardManager.isStalemate()) {
-					haxe.Log.trace("膠着状態",{ fileName : "GameClient.hx", lineNumber : 222, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame"});
 					var target2 = new Date().getTime() + 5000 + this._delayTime;
-					this._socketManager.send(jp.seibe.speed.common.Proto.START(target2 + this._diffTime));
-					this._state = jp.seibe.speed.client.GameClientState.INGAME_START(target2);
+					if(this._socketManager.send(jp.seibe.speed.common.Proto.START(target2 + this._diffTime)) == false) {
+						this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
+						return;
+					}
+					this._state = jp.seibe.speed.common.GameClientState.INGAME_START(target2);
 				}
 				break;
-			case 10:
+			case 11:
 				var timestamp1 = _g[2];
 				var now1 = new Date().getTime();
 				if(now1 < timestamp1) {
 					var msg = Std.string(((timestamp1 - now1) / 1000 | 0) + 1);
 					this._domManager.drawDialog(msg);
+					var res3 = this._socketManager.receive();
+					while(res3 != null) {
+						switch(res3[1]) {
+						case 0:
+							if(this._socketManager.send(jp.seibe.speed.common.Proto.PONG(new Date().getTime())) == false) {
+								this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
+								return;
+							}
+							break;
+						case 9:
+							var e1 = res3[2];
+							this._domManager.dragCard(e1,1 - this._clientType);
+							break;
+						case 10:
+							var type1 = res3[2];
+							this._domManager.drawStamp(type1);
+							break;
+						case 8:
+							var diff2 = res3[2];
+							haxe.Log.trace("NOTICE: カウントダウン中に同期通知",{ fileName : "GameClient.hx", lineNumber : 294, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame"});
+							if(this._clientType == 1) {
+								this._cardManager.update(diff2);
+								this._domManager.drawCard(this._cardManager.getDiff());
+							}
+							break;
+						case 6:
+							haxe.Log.trace("NOTICE: カウントダウン中に終了通知",{ fileName : "GameClient.hx", lineNumber : 301, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame"});
+							this._state = jp.seibe.speed.common.GameClientState.FINISHED;
+							return;
+						default:
+							haxe.Log.trace("NOTICE: カウントダウン中に通知",{ fileName : "GameClient.hx", lineNumber : 307, className : "jp.seibe.speed.client.GameClient", methodName : "onEnterFrame", customParams : [res3]});
+						}
+						res3 = this._socketManager.receive();
+					}
 				} else {
 					this._cardManager.start();
 					this._domManager.drawDialog("");
+					this._domManager.drawTalon(this._cardManager.getTalonLength());
 					this._domManager.enableDrag($bind(this,this.onDragCard));
-					this._state = jp.seibe.speed.client.GameClientState.INGAME_LOOP;
+					this._state = jp.seibe.speed.common.GameClientState.INGAME_LOOP;
 				}
 				break;
-			case 11:
-				this._domManager.disableDrag();
-				this._socketManager.close();
-				this.stop();
-				break;
 			case 12:
+				this._domManager.disableDrag();
+				this._domManager.disableStamp();
+				this._domManager.notify("試合が終了しました。",3000);
+				this._socketManager.close();
+				this._cardManager.close();
+				this._domManager.drawDialog("");
+				this._domManager.setScene(jp.seibe.speed.common.ClientScene.START);
+				this._state = jp.seibe.speed.common.GameClientState.INIT;
+				break;
+			case 13:
 				var prev = _g[2];
-				this.stop();
-				throw "クライアントはエラー終了しました。";
+				this._domManager.disableDrag();
+				this._domManager.disableStamp();
+				this._domManager.notify("クライアントはエラー終了しました。",3000);
+				haxe.Timer.delay(function() {
+					_g1._state = jp.seibe.speed.common.GameClientState.INIT;
+				},3000);
+				this._state = jp.seibe.speed.common.GameClientState.NOTHING;
+				break;
+			case 14:
 				break;
 			}
 		}
@@ -1016,7 +1192,7 @@ jp.seibe.speed.client.GameClient.prototype = {
 			var from = e[2];
 			if(!this._cardManager.canStack(from,to)) e = jp.seibe.speed.common.CardDragEvent.DRAG_CANCEL(from); else {
 				var talonLengthList = this._cardManager.getTalonLength();
-				haxe.Log.trace("残り",{ fileName : "GameClient.hx", lineNumber : 271, className : "jp.seibe.speed.client.GameClient", methodName : "onDragCard", customParams : [talonLengthList]});
+				this._domManager.drawTalon(talonLengthList);
 				var _g = 0;
 				while(_g < 2) {
 					var i = _g++;
@@ -1026,7 +1202,7 @@ jp.seibe.speed.client.GameClient.prototype = {
 			break;
 		default:
 		}
-		this._domManager.dragCard(e);
+		this._domManager.dragCard(e,jp.seibe.speed.common._Speed.ClientType_Impl_.toInt(this._clientType));
 		var now = new Date().getTime();
 		if(!(function($this) {
 			var $r;
@@ -1039,8 +1215,17 @@ jp.seibe.speed.client.GameClient.prototype = {
 			}
 			return $r;
 		}(this)) || now - this._prevDragTime > 33) {
-			this._socketManager.send(jp.seibe.speed.common.Proto.DRAG(e));
+			if(this._socketManager.send(jp.seibe.speed.common.Proto.DRAG(e)) == false) {
+				this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
+				return;
+			}
 			this._prevDragTime = now;
+		}
+	}
+	,onTapStamp: function(stampType) {
+		if(this._socketManager.send(jp.seibe.speed.common.Proto.STAMP(stampType)) == false) {
+			this._state = jp.seibe.speed.common.GameClientState.ERROR(this._state);
+			return;
 		}
 	}
 };
@@ -1053,17 +1238,19 @@ jp.seibe.speed.client.Main.main = function() {
 };
 jp.seibe.speed.client.Main.prototype = {
 	init: function(e) {
-		haxe.Log.trace("init window",{ fileName : "Main.hx", lineNumber : 21, className : "jp.seibe.speed.client.Main", methodName : "init"});
 		this._client = new jp.seibe.speed.client.GameClient();
 		this._client.run();
 	}
 };
 jp.seibe.speed.client.SocketStatus = { __ename__ : true, __constructs__ : ["CLOSE","CONNECTING","CONNECT"] };
 jp.seibe.speed.client.SocketStatus.CLOSE = ["CLOSE",0];
+jp.seibe.speed.client.SocketStatus.CLOSE.toString = $estr;
 jp.seibe.speed.client.SocketStatus.CLOSE.__enum__ = jp.seibe.speed.client.SocketStatus;
 jp.seibe.speed.client.SocketStatus.CONNECTING = ["CONNECTING",1];
+jp.seibe.speed.client.SocketStatus.CONNECTING.toString = $estr;
 jp.seibe.speed.client.SocketStatus.CONNECTING.__enum__ = jp.seibe.speed.client.SocketStatus;
 jp.seibe.speed.client.SocketStatus.CONNECT = ["CONNECT",2];
+jp.seibe.speed.client.SocketStatus.CONNECT.toString = $estr;
 jp.seibe.speed.client.SocketStatus.CONNECT.__enum__ = jp.seibe.speed.client.SocketStatus;
 jp.seibe.speed.client.SocketManager = function() {
 	this._status = jp.seibe.speed.client.SocketStatus.CLOSE;
@@ -1103,7 +1290,7 @@ jp.seibe.speed.client.SocketManager.prototype = {
 		},3000);
 	}
 	,send: function(msg) {
-		if(this._status != jp.seibe.speed.client.SocketStatus.CONNECT) throw "エラー: 未接続での送信要求。";
+		if(this._status != jp.seibe.speed.client.SocketStatus.CONNECT) return false;
 		switch(msg[1]) {
 		case 0:
 			this._sendDataList.push(jp.seibe.speed.common._Speed.RemoteProto_Impl_.toInt(1));
@@ -1234,16 +1421,21 @@ jp.seibe.speed.client.SocketManager.prototype = {
 			}
 			break;
 		case 6:
-			haxe.Log.trace("未実装: send-finish",{ fileName : "SocketManager.hx", lineNumber : 178, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
+			this._sendDataList.push(jp.seibe.speed.common._Speed.RemoteProto_Impl_.toInt(6));
+			break;
+		case 10:
+			var stampType = msg[2];
+			this._sendDataList.push(jp.seibe.speed.common._Speed.RemoteProto_Impl_.toInt(10));
+			this._sendDataList.push(stampType & 15);
 			break;
 		case 2:
-			haxe.Log.trace("未実装: send-ack",{ fileName : "SocketManager.hx", lineNumber : 181, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
+			haxe.Log.trace("未実装: send-ack",{ fileName : "SocketManager.hx", lineNumber : 188, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
 			break;
 		case 3:
-			haxe.Log.trace("未実装: send-nak",{ fileName : "SocketManager.hx", lineNumber : 184, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
+			haxe.Log.trace("未実装: send-nak",{ fileName : "SocketManager.hx", lineNumber : 191, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
 			break;
 		default:
-			haxe.Log.trace("send-error",{ fileName : "SocketManager.hx", lineNumber : 187, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
+			haxe.Log.trace("send-error: 0",{ fileName : "SocketManager.hx", lineNumber : 194, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
 			return false;
 		}
 		var dataLength = this._sendDataList.length;
@@ -1255,8 +1447,11 @@ jp.seibe.speed.client.SocketManager.prototype = {
 				var i4 = _g2++;
 				if(i4 * 2 + 1 == dataLength) data1[i4] = this._sendDataList[i4 * 2] << 4; else data1[i4] = (this._sendDataList[i4 * 2] << 4) + this._sendDataList[i4 * 2 + 1];
 			}
-			haxe.Log.trace("send (" + byteLength + " byte)",{ fileName : "SocketManager.hx", lineNumber : 200, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
-			this._ws.send(data1);
+			if(this._ws.send(data1) == false) {
+				haxe.Log.trace("send-error: 1",{ fileName : "SocketManager.hx", lineNumber : 209, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
+				this.close();
+				return false;
+			}
 			this._sendDataList = new Array();
 		}
 		return true;
@@ -1354,6 +1549,9 @@ jp.seibe.speed.client.SocketManager.prototype = {
 				return jp.seibe.speed.common.Proto.DRAG(jp.seibe.speed.common.CardDragEvent.DRAG_CANCEL(this.intToPos(from)));
 			}
 			break;
+		case 10:
+			var type1 = this._receiveDataList.shift();
+			return jp.seibe.speed.common.Proto.STAMP(type1);
 		default:
 			return null;
 		}
@@ -1366,6 +1564,8 @@ jp.seibe.speed.client.SocketManager.prototype = {
 		}
 		this._status = jp.seibe.speed.client.SocketStatus.CLOSE;
 		this._ws = null;
+		this._sendDataList = new Array();
+		this._receiveDataList = new Array();
 	}
 	,onReceive: function(e) {
 		var bytes = new Uint8Array(e.data);
@@ -1376,11 +1576,12 @@ jp.seibe.speed.client.SocketManager.prototype = {
 			this._receiveDataList.push(bytes[i] >> 4);
 			this._receiveDataList.push(bytes[i] & 15);
 		}
-		haxe.Log.trace("receive: (" + bytes.byteLength + " byte)",{ fileName : "SocketManager.hx", lineNumber : 351, className : "jp.seibe.speed.client.SocketManager", methodName : "onReceive"});
 	}
 	,onClose: function(e) {
+		this._status = jp.seibe.speed.client.SocketStatus.CLOSE;
 	}
 	,onError: function(e) {
+		this._status = jp.seibe.speed.client.SocketStatus.CLOSE;
 		throw "実行中にソケット接続が閉じられました。";
 	}
 	,posToInt: function(pos) {
@@ -1409,44 +1610,101 @@ jp.seibe.speed.client.SocketManager.prototype = {
 };
 jp.seibe.speed.common = {};
 jp.seibe.speed.common.CardSuit = { __ename__ : true, __constructs__ : ["CLUB","SPADE","DIAMOND","HEART","JOKER","NONE"] };
-jp.seibe.speed.common.CardSuit.CLUB = function(i) { var $x = ["CLUB",0,i]; $x.__enum__ = jp.seibe.speed.common.CardSuit; return $x; };
-jp.seibe.speed.common.CardSuit.SPADE = function(i) { var $x = ["SPADE",1,i]; $x.__enum__ = jp.seibe.speed.common.CardSuit; return $x; };
-jp.seibe.speed.common.CardSuit.DIAMOND = function(i) { var $x = ["DIAMOND",2,i]; $x.__enum__ = jp.seibe.speed.common.CardSuit; return $x; };
-jp.seibe.speed.common.CardSuit.HEART = function(i) { var $x = ["HEART",3,i]; $x.__enum__ = jp.seibe.speed.common.CardSuit; return $x; };
+jp.seibe.speed.common.CardSuit.CLUB = function(i) { var $x = ["CLUB",0,i]; $x.__enum__ = jp.seibe.speed.common.CardSuit; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.CardSuit.SPADE = function(i) { var $x = ["SPADE",1,i]; $x.__enum__ = jp.seibe.speed.common.CardSuit; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.CardSuit.DIAMOND = function(i) { var $x = ["DIAMOND",2,i]; $x.__enum__ = jp.seibe.speed.common.CardSuit; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.CardSuit.HEART = function(i) { var $x = ["HEART",3,i]; $x.__enum__ = jp.seibe.speed.common.CardSuit; $x.toString = $estr; return $x; };
 jp.seibe.speed.common.CardSuit.JOKER = ["JOKER",4];
+jp.seibe.speed.common.CardSuit.JOKER.toString = $estr;
 jp.seibe.speed.common.CardSuit.JOKER.__enum__ = jp.seibe.speed.common.CardSuit;
 jp.seibe.speed.common.CardSuit.NONE = ["NONE",5];
+jp.seibe.speed.common.CardSuit.NONE.toString = $estr;
 jp.seibe.speed.common.CardSuit.NONE.__enum__ = jp.seibe.speed.common.CardSuit;
 jp.seibe.speed.common.CardPos = { __ename__ : true, __constructs__ : ["TALON","FIELD","HAND"] };
-jp.seibe.speed.common.CardPos.TALON = function(owner) { var $x = ["TALON",0,owner]; $x.__enum__ = jp.seibe.speed.common.CardPos; return $x; };
-jp.seibe.speed.common.CardPos.FIELD = function(index) { var $x = ["FIELD",1,index]; $x.__enum__ = jp.seibe.speed.common.CardPos; return $x; };
-jp.seibe.speed.common.CardPos.HAND = function(owner,index) { var $x = ["HAND",2,owner,index]; $x.__enum__ = jp.seibe.speed.common.CardPos; return $x; };
+jp.seibe.speed.common.CardPos.TALON = function(owner) { var $x = ["TALON",0,owner]; $x.__enum__ = jp.seibe.speed.common.CardPos; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.CardPos.FIELD = function(index) { var $x = ["FIELD",1,index]; $x.__enum__ = jp.seibe.speed.common.CardPos; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.CardPos.HAND = function(owner,index) { var $x = ["HAND",2,owner,index]; $x.__enum__ = jp.seibe.speed.common.CardPos; $x.toString = $estr; return $x; };
 jp.seibe.speed.common.CardDragEvent = { __ename__ : true, __constructs__ : ["DRAG_BEGIN","DRAG_MOVE","DRAG_END","DRAG_CANCEL"] };
-jp.seibe.speed.common.CardDragEvent.DRAG_BEGIN = function(pos) { var $x = ["DRAG_BEGIN",0,pos]; $x.__enum__ = jp.seibe.speed.common.CardDragEvent; return $x; };
-jp.seibe.speed.common.CardDragEvent.DRAG_MOVE = function(pos,dx,dy) { var $x = ["DRAG_MOVE",1,pos,dx,dy]; $x.__enum__ = jp.seibe.speed.common.CardDragEvent; return $x; };
-jp.seibe.speed.common.CardDragEvent.DRAG_END = function(from,to) { var $x = ["DRAG_END",2,from,to]; $x.__enum__ = jp.seibe.speed.common.CardDragEvent; return $x; };
-jp.seibe.speed.common.CardDragEvent.DRAG_CANCEL = function(pos) { var $x = ["DRAG_CANCEL",3,pos]; $x.__enum__ = jp.seibe.speed.common.CardDragEvent; return $x; };
+jp.seibe.speed.common.CardDragEvent.DRAG_BEGIN = function(pos) { var $x = ["DRAG_BEGIN",0,pos]; $x.__enum__ = jp.seibe.speed.common.CardDragEvent; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.CardDragEvent.DRAG_MOVE = function(pos,dx,dy) { var $x = ["DRAG_MOVE",1,pos,dx,dy]; $x.__enum__ = jp.seibe.speed.common.CardDragEvent; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.CardDragEvent.DRAG_END = function(from,to) { var $x = ["DRAG_END",2,from,to]; $x.__enum__ = jp.seibe.speed.common.CardDragEvent; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.CardDragEvent.DRAG_CANCEL = function(pos) { var $x = ["DRAG_CANCEL",3,pos]; $x.__enum__ = jp.seibe.speed.common.CardDragEvent; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.GameClientState = { __ename__ : true, __constructs__ : ["INIT","INITED","CONNECT","CONNECTING","CONNECTED","MATCHING","NEGOTIATE","NEGOTIATING","NEGOTIATED","INGAME_INIT","INGAME_LOOP","INGAME_START","FINISHED","ERROR","NOTHING"] };
+jp.seibe.speed.common.GameClientState.INIT = ["INIT",0];
+jp.seibe.speed.common.GameClientState.INIT.toString = $estr;
+jp.seibe.speed.common.GameClientState.INIT.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.INITED = ["INITED",1];
+jp.seibe.speed.common.GameClientState.INITED.toString = $estr;
+jp.seibe.speed.common.GameClientState.INITED.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.CONNECT = ["CONNECT",2];
+jp.seibe.speed.common.GameClientState.CONNECT.toString = $estr;
+jp.seibe.speed.common.GameClientState.CONNECT.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.CONNECTING = ["CONNECTING",3];
+jp.seibe.speed.common.GameClientState.CONNECTING.toString = $estr;
+jp.seibe.speed.common.GameClientState.CONNECTING.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.CONNECTED = ["CONNECTED",4];
+jp.seibe.speed.common.GameClientState.CONNECTED.toString = $estr;
+jp.seibe.speed.common.GameClientState.CONNECTED.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.MATCHING = ["MATCHING",5];
+jp.seibe.speed.common.GameClientState.MATCHING.toString = $estr;
+jp.seibe.speed.common.GameClientState.MATCHING.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.NEGOTIATE = ["NEGOTIATE",6];
+jp.seibe.speed.common.GameClientState.NEGOTIATE.toString = $estr;
+jp.seibe.speed.common.GameClientState.NEGOTIATE.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.NEGOTIATING = ["NEGOTIATING",7];
+jp.seibe.speed.common.GameClientState.NEGOTIATING.toString = $estr;
+jp.seibe.speed.common.GameClientState.NEGOTIATING.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.NEGOTIATED = ["NEGOTIATED",8];
+jp.seibe.speed.common.GameClientState.NEGOTIATED.toString = $estr;
+jp.seibe.speed.common.GameClientState.NEGOTIATED.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.INGAME_INIT = ["INGAME_INIT",9];
+jp.seibe.speed.common.GameClientState.INGAME_INIT.toString = $estr;
+jp.seibe.speed.common.GameClientState.INGAME_INIT.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.INGAME_LOOP = ["INGAME_LOOP",10];
+jp.seibe.speed.common.GameClientState.INGAME_LOOP.toString = $estr;
+jp.seibe.speed.common.GameClientState.INGAME_LOOP.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.INGAME_START = function(timestamp) { var $x = ["INGAME_START",11,timestamp]; $x.__enum__ = jp.seibe.speed.common.GameClientState; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.GameClientState.FINISHED = ["FINISHED",12];
+jp.seibe.speed.common.GameClientState.FINISHED.toString = $estr;
+jp.seibe.speed.common.GameClientState.FINISHED.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.GameClientState.ERROR = function(prev) { var $x = ["ERROR",13,prev]; $x.__enum__ = jp.seibe.speed.common.GameClientState; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.GameClientState.NOTHING = ["NOTHING",14];
+jp.seibe.speed.common.GameClientState.NOTHING.toString = $estr;
+jp.seibe.speed.common.GameClientState.NOTHING.__enum__ = jp.seibe.speed.common.GameClientState;
+jp.seibe.speed.common.ClientScene = { __ename__ : true, __constructs__ : ["START","CONNECTING","INGAME"] };
+jp.seibe.speed.common.ClientScene.START = ["START",0];
+jp.seibe.speed.common.ClientScene.START.toString = $estr;
+jp.seibe.speed.common.ClientScene.START.__enum__ = jp.seibe.speed.common.ClientScene;
+jp.seibe.speed.common.ClientScene.CONNECTING = ["CONNECTING",1];
+jp.seibe.speed.common.ClientScene.CONNECTING.toString = $estr;
+jp.seibe.speed.common.ClientScene.CONNECTING.__enum__ = jp.seibe.speed.common.ClientScene;
+jp.seibe.speed.common.ClientScene.INGAME = function(clientType) { var $x = ["INGAME",2,clientType]; $x.__enum__ = jp.seibe.speed.common.ClientScene; $x.toString = $estr; return $x; };
 jp.seibe.speed.common._Speed = {};
 jp.seibe.speed.common._Speed.ClientType_Impl_ = function() { };
 jp.seibe.speed.common._Speed.ClientType_Impl_.__name__ = true;
 jp.seibe.speed.common._Speed.ClientType_Impl_.toInt = function(this1) {
 	return this1;
 };
-jp.seibe.speed.common.Proto = { __ename__ : true, __constructs__ : ["PING","PONG","ACK","NAK","MATCHING","START","FINISH","ERROR","UPDATE","DRAG"] };
+jp.seibe.speed.common.Proto = { __ename__ : true, __constructs__ : ["PING","PONG","ACK","NAK","MATCHING","START","FINISH","ERROR","UPDATE","DRAG","STAMP"] };
 jp.seibe.speed.common.Proto.PING = ["PING",0];
+jp.seibe.speed.common.Proto.PING.toString = $estr;
 jp.seibe.speed.common.Proto.PING.__enum__ = jp.seibe.speed.common.Proto;
-jp.seibe.speed.common.Proto.PONG = function(timestamp) { var $x = ["PONG",1,timestamp]; $x.__enum__ = jp.seibe.speed.common.Proto; return $x; };
+jp.seibe.speed.common.Proto.PONG = function(timestamp) { var $x = ["PONG",1,timestamp]; $x.__enum__ = jp.seibe.speed.common.Proto; $x.toString = $estr; return $x; };
 jp.seibe.speed.common.Proto.ACK = ["ACK",2];
+jp.seibe.speed.common.Proto.ACK.toString = $estr;
 jp.seibe.speed.common.Proto.ACK.__enum__ = jp.seibe.speed.common.Proto;
 jp.seibe.speed.common.Proto.NAK = ["NAK",3];
+jp.seibe.speed.common.Proto.NAK.toString = $estr;
 jp.seibe.speed.common.Proto.NAK.__enum__ = jp.seibe.speed.common.Proto;
-jp.seibe.speed.common.Proto.MATCHING = function(clientType) { var $x = ["MATCHING",4,clientType]; $x.__enum__ = jp.seibe.speed.common.Proto; return $x; };
-jp.seibe.speed.common.Proto.START = function(timestamp) { var $x = ["START",5,timestamp]; $x.__enum__ = jp.seibe.speed.common.Proto; return $x; };
+jp.seibe.speed.common.Proto.MATCHING = function(clientType) { var $x = ["MATCHING",4,clientType]; $x.__enum__ = jp.seibe.speed.common.Proto; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.Proto.START = function(timestamp) { var $x = ["START",5,timestamp]; $x.__enum__ = jp.seibe.speed.common.Proto; $x.toString = $estr; return $x; };
 jp.seibe.speed.common.Proto.FINISH = ["FINISH",6];
+jp.seibe.speed.common.Proto.FINISH.toString = $estr;
 jp.seibe.speed.common.Proto.FINISH.__enum__ = jp.seibe.speed.common.Proto;
-jp.seibe.speed.common.Proto.ERROR = function(errno) { var $x = ["ERROR",7,errno]; $x.__enum__ = jp.seibe.speed.common.Proto; return $x; };
-jp.seibe.speed.common.Proto.UPDATE = function(diff) { var $x = ["UPDATE",8,diff]; $x.__enum__ = jp.seibe.speed.common.Proto; return $x; };
-jp.seibe.speed.common.Proto.DRAG = function(e) { var $x = ["DRAG",9,e]; $x.__enum__ = jp.seibe.speed.common.Proto; return $x; };
+jp.seibe.speed.common.Proto.ERROR = function(errno) { var $x = ["ERROR",7,errno]; $x.__enum__ = jp.seibe.speed.common.Proto; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.Proto.UPDATE = function(diff) { var $x = ["UPDATE",8,diff]; $x.__enum__ = jp.seibe.speed.common.Proto; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.Proto.DRAG = function(e) { var $x = ["DRAG",9,e]; $x.__enum__ = jp.seibe.speed.common.Proto; $x.toString = $estr; return $x; };
+jp.seibe.speed.common.Proto.STAMP = function(stampType) { var $x = ["STAMP",10,stampType]; $x.__enum__ = jp.seibe.speed.common.Proto; $x.toString = $estr; return $x; };
 jp.seibe.speed.common._Speed.RemoteProto_Impl_ = function() { };
 jp.seibe.speed.common._Speed.RemoteProto_Impl_.__name__ = true;
 jp.seibe.speed.common._Speed.RemoteProto_Impl_.toInt = function(this1) {
