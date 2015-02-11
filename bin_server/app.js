@@ -69,7 +69,6 @@ jp.seibe.speed.server.GameServer.prototype = {
 	}
 	,onOpen: function(client) {
 		var _g = this;
-		console.log("open: (" + this._server.clients.length + ")");
 		client.on(js.node._WsServer.WsSocketEvent_Impl_.toString("message"),function(data,flags) {
 			_g.onMessage(client,data,flags);
 		});
@@ -88,35 +87,19 @@ jp.seibe.speed.server.GameServer.prototype = {
 			comb[0] = client;
 			comb[1] = null;
 			this._combList.push(comb);
-			console.log("wating...");
 		} else {
 			this._combList[length - 1][1] = client;
-			console.log("match!!");
-			var data1 = new Uint8Array(1);
-			data1[0] = (4 << 4) + 1;
-			console.log("send: " + data1[0]);
-			this._combList[length - 1][0].send(data1);
-			data1[0] = (4 << 4) + 2;
-			console.log("send: " + data1[0]);
-			this._combList[length - 1][1].send(data1);
+			this._combList[length - 1][0].send(JSON.stringify({ type : "match", data : true},null,null));
+			this._combList[length - 1][1].send(JSON.stringify({ type : "match", data : false},null,null));
 		}
 	}
 	,onMessage: function(ws,data,flags) {
-		if(!flags.binary) {
-			console.log("エラー: 不正なデータ");
-			return;
-		}
 		var opp = this.getOpponent(ws);
-		if(opp.ws != null) {
-			if(ws == opp.comb[0]) console.log("pass data from host."); else console.log("pass data from guest.");
-			opp.ws.send(data);
-		}
+		if(opp.ws != null) opp.ws.send(data);
 	}
 	,onClose: function(ws,code,msg) {
-		console.log("close: " + Std.string(code));
 		var opp = this.getOpponent(ws);
 		if(opp != null) {
-			if(ws == opp.comb[0]) console.log("(host close)"); else console.log("(guest close)");
 			if(opp.ws != null) opp.ws.close();
 			if(opp.comb != null) HxOverrides.remove(this._combList,opp.comb);
 		}

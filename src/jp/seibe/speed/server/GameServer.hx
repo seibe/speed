@@ -1,5 +1,6 @@
 package jp.seibe.speed.server;
 import haxe.ds.Vector;
+import haxe.Json;
 import jp.seibe.speed.common.Speed;
 import js.html.Uint8Array;
 import js.Node;
@@ -42,7 +43,7 @@ class GameServer
 	
 	private function onOpen(client:WsSocket):Void
 	{
-		trace("open: (" + _server.clients.length + ")");
+		//trace("open: (" + _server.clients.length + ")");
 		
 		// イベント登録
 		client.on(WsSocketEvent.MESSAGE, function (data:Dynamic, flags:WsSocketFlags):Void {
@@ -65,14 +66,23 @@ class GameServer
 			_combList.push(comb);
 			
 			// 待機させる
-			trace("wating...");
+			//trace("wating...");
 		}
 		else {
 			// 待機していたプレイヤーと組み合わせる
 			_combList[length - 1][1] = client;
-			trace("match!!");
+			//trace("match!!");
 			
 			// マッチング成功通知
+			_combList[length - 1][0].send(Json.stringify({
+				type: "match",
+				data: true
+			}));
+			_combList[length - 1][1].send(Json.stringify({
+				type: "match",
+				data: false
+			}));
+			/*
 			var data:Uint8Array = new Uint8Array(1);
 			data[0] = (RemoteProto.MATCH << 4) + 1;
 			trace("send: " + data[0]);
@@ -80,38 +90,27 @@ class GameServer
 			data[0] = (RemoteProto.MATCH << 4) + 2;
 			trace("send: " + data[0]);
 			_combList[length - 1][1].send(data);
+			*/
 		}
 	}
 	
 	private function onMessage(ws:WsSocket, data:Dynamic, flags:WsSocketFlags):Void
 	{
-		if (!flags.binary) {
-			trace("エラー: 不正なデータ");
-			return;
-		}
-		
 		var opp = getOpponent(ws);
-		//var bytes:Uint8Array = new Uint8Array(data);
 		if (opp.ws != null) {
-			if (ws == opp.comb[0])trace("pass data from host.");
-			else trace("pass data from guest.");
 			opp.ws.send(data);
-			/*
-			for (i in 0...bytes.length) {
-				trace("message-" + i, bytes[i] >> 4, bytes[i] & 0xf);
-			}*/
 		}
 	}
 	
 	private function onClose(ws:WsSocket, code:Dynamic, msg:Dynamic):Void
 	{
-		trace("close: " + code);
+		//trace("close: " + code);
 		
 		// 対戦相手の接続を切り、マッチングリストから削除する
 		var opp = getOpponent(ws);
 		if (opp != null) {
-			if (ws == opp.comb[0]) trace("(host close)");
-			else trace("(guest close)");
+			//if (ws == opp.comb[0]) trace("(host close)");
+			//else trace("(guest close)");
 			
 			if (opp.ws != null) {
 				opp.ws.close();

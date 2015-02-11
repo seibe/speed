@@ -19,7 +19,6 @@ class StartState implements IState
 		_client.dom.getElement("#stage, #stamp, .start-loader").addClass("hidden");
 		_client.dom.getElement("#start, .start-buttons").removeClass("hidden");
 		_client.dom.getElement("#start-button-online").on("click", function(e:ZeptoEvent):Void {
-			trace("click!");
 			_client.change(ClientState.CONNECT);
 		});
 	}
@@ -31,7 +30,7 @@ class StartState implements IState
 	
 	public function stop():Void 
 	{
-		
+		_client.dom.getElement("#start-button-online").off("click");
 	}
 	
 }

@@ -67,7 +67,7 @@ class IngameState implements IState
 						case Proto.PING:
 							// PONGを返す
 							if (_client.socket.send(Proto.PONG(Date.now().getTime())) == false) {
-								throw "error";
+								onFail();
 								return;
 							}
 							
@@ -159,7 +159,7 @@ class IngameState implements IState
 			_client.dom.drawCard(cardList);
 			// 変更送出
 			if (_client.socket.send( Proto.UPDATE(cardList) ) == false) {
-				throw "error";
+				onFail();
 				return;
 			}
 		}
@@ -190,7 +190,7 @@ class IngameState implements IState
 			// 膠着状態なので、再度スタートする
 			_startTime = Date.now().getTime() + 5000 + _client.delayTime;
 			if (_client.socket.send( Proto.START(_startTime + _client.diffTime) ) == false) {
-				throw "error";
+				onFail();
 				return;
 			}
 		}
@@ -200,6 +200,13 @@ class IngameState implements IState
 	{
 		_client.dom.disableDrag();
 		_client.dom.disableStamp();
+	}
+	
+	private function onFail():Void
+	{
+		_client.dom.drawDialog("");
+		_client.dom.notify("通信に失敗しました。", 3000);
+		_client.change(ClientState.START);
 	}
 	
 	private function onDragCard(e:CardDragEvent):Void
@@ -214,7 +221,7 @@ class IngameState implements IState
 				else {
 					// stack成功
 					var talonLengthList:Array<Int> = _client.card.getTalonLength();
-					//trace("残り", talonLengthList);
+					
 					_client.dom.drawTalon(talonLengthList);
 					for (i in 0...2) {
 						// 山札の残りが無くなっていたら描画を更新する
@@ -235,7 +242,7 @@ class IngameState implements IState
 		var now:Float = Date.now().getTime();
 		if (!e.match(CardDragEvent.DRAG_MOVE) || now - _prevDragTime > 33) {
 			if (_client.socket.send( DRAG(e) ) == false) {
-				throw "error";
+				onFail();
 				return;
 			}
 			_prevDragTime = now;
@@ -245,7 +252,7 @@ class IngameState implements IState
 	private function onTapStamp(stampType:Int):Void
 	{
 		if (_client.socket.send(Proto.STAMP(stampType)) == false) {
-			throw "error";
+				onFail();
 			return;
 		}
 	}

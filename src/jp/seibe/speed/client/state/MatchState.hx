@@ -24,7 +24,6 @@ class MatchState implements IState
 		if (res != null) {
 			switch (res) {
 				case Proto.MATCHING(clientType):
-					trace("client-type:", clientType);
 					_client.type = clientType;
 					_client.dom.setClientType(clientType);
 					_client.change(ClientState.NEGOTIATE);

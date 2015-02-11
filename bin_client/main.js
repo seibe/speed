@@ -638,7 +638,6 @@ jp.seibe.speed.client.DomManager.prototype = {
 	}
 	,drawStamp: function(stampType) {
 		var stamp = this._stampList[stampType].clone();
-		haxe.Log.trace("clone",{ fileName : "DomManager.hx", lineNumber : 144, className : "jp.seibe.speed.client.DomManager", methodName : "drawStamp"});
 		stamp.css({ left : Std.string(Std["int"](Math.random() * (this._window.innerWidth - 120))) + "px"});
 		stamp.on("animationend webkitAnimationEnd",function(e) {
 			stamp.remove();
@@ -928,7 +927,6 @@ jp.seibe.speed.client.GameClient.prototype = {
 	}
 	,change: function(to) {
 		if(this._state != null) this._state.stop();
-		haxe.Log.trace(to,{ fileName : "GameClient.hx", lineNumber : 54, className : "jp.seibe.speed.client.GameClient", methodName : "change"});
 		switch(to[1]) {
 		case 0:
 			this._state = new jp.seibe.speed.client.state.StartState(this);
@@ -971,17 +969,24 @@ jp.seibe.speed.client.Main.prototype = {
 		this._client.start();
 	}
 };
-jp.seibe.speed.client.SocketStatus = { __ename__ : true, __constructs__ : ["CLOSE","CONNECTING","CONNECT"] };
+jp.seibe.speed.client.SocketStatus = { __ename__ : true, __constructs__ : ["CLOSE","CONNECTING","MATCHING","CONNECT_WS","CONNECT_ALL"] };
 jp.seibe.speed.client.SocketStatus.CLOSE = ["CLOSE",0];
 jp.seibe.speed.client.SocketStatus.CLOSE.toString = $estr;
 jp.seibe.speed.client.SocketStatus.CLOSE.__enum__ = jp.seibe.speed.client.SocketStatus;
 jp.seibe.speed.client.SocketStatus.CONNECTING = ["CONNECTING",1];
 jp.seibe.speed.client.SocketStatus.CONNECTING.toString = $estr;
 jp.seibe.speed.client.SocketStatus.CONNECTING.__enum__ = jp.seibe.speed.client.SocketStatus;
-jp.seibe.speed.client.SocketStatus.CONNECT = ["CONNECT",2];
-jp.seibe.speed.client.SocketStatus.CONNECT.toString = $estr;
-jp.seibe.speed.client.SocketStatus.CONNECT.__enum__ = jp.seibe.speed.client.SocketStatus;
+jp.seibe.speed.client.SocketStatus.MATCHING = ["MATCHING",2];
+jp.seibe.speed.client.SocketStatus.MATCHING.toString = $estr;
+jp.seibe.speed.client.SocketStatus.MATCHING.__enum__ = jp.seibe.speed.client.SocketStatus;
+jp.seibe.speed.client.SocketStatus.CONNECT_WS = ["CONNECT_WS",3];
+jp.seibe.speed.client.SocketStatus.CONNECT_WS.toString = $estr;
+jp.seibe.speed.client.SocketStatus.CONNECT_WS.__enum__ = jp.seibe.speed.client.SocketStatus;
+jp.seibe.speed.client.SocketStatus.CONNECT_ALL = ["CONNECT_ALL",4];
+jp.seibe.speed.client.SocketStatus.CONNECT_ALL.toString = $estr;
+jp.seibe.speed.client.SocketStatus.CONNECT_ALL.__enum__ = jp.seibe.speed.client.SocketStatus;
 jp.seibe.speed.client.SocketManager = function() {
+	this.WS_URL = "ws://seibe.jp:8080/ws/speed";
 	this._status = jp.seibe.speed.client.SocketStatus.CLOSE;
 	this._sendDataList = new Array();
 	this._receiveDataList = new Array();
@@ -994,36 +999,35 @@ jp.seibe.speed.client.SocketManager.getInstance = function() {
 jp.seibe.speed.client.SocketManager.prototype = {
 	connect: function(callback) {
 		var _g = this;
+		if(this._status != jp.seibe.speed.client.SocketStatus.CLOSE) this.close();
 		this._status = jp.seibe.speed.client.SocketStatus.CONNECTING;
-		haxe.Log.trace("websocket: connecting start",{ fileName : "SocketManager.hx", lineNumber : 41, className : "jp.seibe.speed.client.SocketManager", methodName : "connect"});
-		this._ws = new WebSocket("ws://seibe.jp:8080/ws/speed");
-		this._ws.binaryType = "arraybuffer";
+		this._pc = new RTCPeerConnection({ iceServers : [{ url : "stun:stun.l.google.com:19302"}]});
+		this._pc.onicecandidate = $bind(this,this.onIceCandidate);
+		this._pc.ondatachannel = $bind(this,this.onDataChannel);
+		this._ws = new WebSocket(this.WS_URL);
 		this._ws.onopen = function(e) {
 			if(_g._status == jp.seibe.speed.client.SocketStatus.CLOSE) return;
-			_g._status = jp.seibe.speed.client.SocketStatus.CONNECT;
+			_g._status = jp.seibe.speed.client.SocketStatus.MATCHING;
 			callback(true);
-			_g._ws.onerror = $bind(_g,_g.onError);
-			haxe.Log.trace("websocket: connected",{ fileName : "SocketManager.hx", lineNumber : 57, className : "jp.seibe.speed.client.SocketManager", methodName : "connect"});
+			_g._ws.onerror = $bind(_g,_g.onErrorWs);
 		};
-		this._ws.onclose = $bind(this,this.onClose);
-		this._ws.onmessage = $bind(this,this.onReceive);
+		this._ws.onclose = $bind(this,this.onCloseWs);
+		this._ws.onmessage = $bind(this,this.onReceiveWs);
 		this._ws.onerror = function(e1) {
 			if(_g._status == jp.seibe.speed.client.SocketStatus.CONNECTING) {
 				callback(false);
 				_g.close();
-				haxe.Log.trace("websocket: connecting error",{ fileName : "SocketManager.hx", lineNumber : 68, className : "jp.seibe.speed.client.SocketManager", methodName : "connect"});
 			}
 		};
 		haxe.Timer.delay(function() {
 			if(_g._status == jp.seibe.speed.client.SocketStatus.CONNECTING) {
 				callback(false);
 				_g.close();
-				haxe.Log.trace("websocket: connecting timeout",{ fileName : "SocketManager.hx", lineNumber : 77, className : "jp.seibe.speed.client.SocketManager", methodName : "connect"});
 			}
 		},3000);
 	}
 	,send: function(msg) {
-		if(this._status != jp.seibe.speed.client.SocketStatus.CONNECT) return false;
+		if(this._status != jp.seibe.speed.client.SocketStatus.CONNECT_ALL) return false;
 		switch(msg[1]) {
 		case 0:
 			this._sendDataList.push(jp.seibe.speed.common._Speed.RemoteProto_Impl_.toInt(1));
@@ -1162,13 +1166,13 @@ jp.seibe.speed.client.SocketManager.prototype = {
 			this._sendDataList.push(stampType & 15);
 			break;
 		case 2:
-			haxe.Log.trace("未実装: send-ack",{ fileName : "SocketManager.hx", lineNumber : 195, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
+			haxe.Log.trace("未実装: send-ack",{ fileName : "SocketManager.hx", lineNumber : 207, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
 			break;
 		case 3:
-			haxe.Log.trace("未実装: send-nak",{ fileName : "SocketManager.hx", lineNumber : 198, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
+			haxe.Log.trace("未実装: send-nak",{ fileName : "SocketManager.hx", lineNumber : 210, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
 			break;
 		default:
-			haxe.Log.trace("send-error: 0",{ fileName : "SocketManager.hx", lineNumber : 201, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
+			haxe.Log.trace("send-error: 0",{ fileName : "SocketManager.hx", lineNumber : 213, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
 			return false;
 		}
 		var dataLength = this._sendDataList.length;
@@ -1180,8 +1184,9 @@ jp.seibe.speed.client.SocketManager.prototype = {
 				var i4 = _g2++;
 				if(i4 * 2 + 1 == dataLength) data1[i4] = this._sendDataList[i4 * 2] << 4; else data1[i4] = (this._sendDataList[i4 * 2] << 4) + this._sendDataList[i4 * 2 + 1];
 			}
-			if(this._ws.send(data1) == false) {
-				haxe.Log.trace("send-error: 1",{ fileName : "SocketManager.hx", lineNumber : 216, className : "jp.seibe.speed.client.SocketManager", methodName : "send"});
+			try {
+				this._dc.send(data1);
+			} catch( e1 ) {
 				this.close();
 				return false;
 			}
@@ -1291,16 +1296,86 @@ jp.seibe.speed.client.SocketManager.prototype = {
 		return null;
 	}
 	,close: function() {
-		if(this._status == jp.seibe.speed.client.SocketStatus.CONNECT) {
-			this._ws.onopen = this._ws.onerror = null;
+		if(this._status != jp.seibe.speed.client.SocketStatus.CLOSE) {
 			this._ws.close();
+			this._dc.close();
+			this._pc.close();
 		}
 		this._status = jp.seibe.speed.client.SocketStatus.CLOSE;
 		this._ws = null;
+		this._dc = null;
+		this._pc = null;
 		this._sendDataList = new Array();
 		this._receiveDataList = new Array();
 	}
-	,onReceive: function(e) {
+	,initDataChannel: function(dc) {
+		var _g = this;
+		dc.binaryType = "arraybuffer";
+		dc.onopen = function(e) {
+			_g._status = jp.seibe.speed.client.SocketStatus.CONNECT_ALL;
+			_g._receiveDataList.push(jp.seibe.speed.common._Speed.RemoteProto_Impl_.toInt(4));
+			_g._receiveDataList.push(_g._clientType);
+		};
+		dc.onclose = $bind(this,this.onCloseDc);
+		dc.onmessage = $bind(this,this.onReceiveDc);
+		dc.onerror = $bind(this,this.onErrorDc);
+	}
+	,onCreateSdp: function(sd) {
+		var _g = this;
+		this._pc.setLocalDescription(sd,function() {
+			return _g._ws.send(JSON.stringify({ type : "sdp", data : sd}));
+		},$bind(this,this.onFailure));
+		return true;
+	}
+	,onFailure: function(err) {
+		haxe.Log.trace(err,{ fileName : "SocketManager.hx", lineNumber : 407, className : "jp.seibe.speed.client.SocketManager", methodName : "onFailure"});
+		return false;
+	}
+	,onIceCandidate: function(evt) {
+		if(evt && evt.candidate) this._ws.send(JSON.stringify({ type : "candidate", data : evt.candidate}));
+	}
+	,onDataChannel: function(evt) {
+		if(evt && evt.channel) {
+			this._dc = evt.channel;
+			this.initDataChannel(this._dc);
+		}
+	}
+	,onReceiveWs: function(e) {
+		var _g1 = this;
+		var msg = JSON.parse(e.data);
+		var _g = msg.type;
+		switch(_g) {
+		case "match":
+			if(msg.data) this._clientType = 1; else this._clientType = 2;
+			this._status = jp.seibe.speed.client.SocketStatus.CONNECT_WS;
+			if(this._clientType == 1) {
+				this._dc = this._pc.createDataChannel("speedDataChannel");
+				this.initDataChannel(this._dc);
+				this._pc.createOffer($bind(this,this.onCreateSdp),$bind(this,this.onFailure));
+			}
+			break;
+		case "sdp":
+			var sd = new RTCSessionDescription(msg.data);
+			this._pc.setRemoteDescription(sd,function() {
+				if(sd.type == "offer") _g1._pc.createAnswer($bind(_g1,_g1.onCreateSdp),$bind(_g1,_g1.onFailure));
+				return true;
+			},$bind(this,this.onFailure));
+			break;
+		case "candidate":
+			var candidate = new RTCIceCandidate(msg.data);
+			this._pc.addIceCandidate(candidate);
+			break;
+		default:
+			throw "error";
+		}
+	}
+	,onCloseWs: function(e) {
+		haxe.Log.trace("ws: close",{ fileName : "SocketManager.hx", lineNumber : 467, className : "jp.seibe.speed.client.SocketManager", methodName : "onCloseWs"});
+	}
+	,onErrorWs: function(e) {
+		throw "error";
+	}
+	,onReceiveDc: function(e) {
 		var bytes = new Uint8Array(e.data);
 		var _g1 = 0;
 		var _g = bytes.byteLength;
@@ -1310,12 +1385,11 @@ jp.seibe.speed.client.SocketManager.prototype = {
 			this._receiveDataList.push(bytes[i] & 15);
 		}
 	}
-	,onClose: function(e) {
-		this._status = jp.seibe.speed.client.SocketStatus.CLOSE;
+	,onCloseDc: function(e) {
+		haxe.Log.trace("dc: close",{ fileName : "SocketManager.hx", lineNumber : 486, className : "jp.seibe.speed.client.SocketManager", methodName : "onCloseDc"});
 	}
-	,onError: function(e) {
-		this._status = jp.seibe.speed.client.SocketStatus.CLOSE;
-		throw "実行中にソケット接続が閉じられました。";
+	,onErrorDc: function(e) {
+		throw "error";
 	}
 	,posToInt: function(pos) {
 		var data;
@@ -1432,7 +1506,7 @@ jp.seibe.speed.client.state.IngameState.prototype = {
 					switch(res[1]) {
 					case 0:
 						if(this._client.socket.send(jp.seibe.speed.common.Proto.PONG(new Date().getTime())) == false) {
-							throw "error";
+							this.onFail();
 							return;
 						}
 						break;
@@ -1511,7 +1585,7 @@ jp.seibe.speed.client.state.IngameState.prototype = {
 		if(cardList.length > 0) {
 			this._client.dom.drawCard(cardList);
 			if(this._client.socket.send(jp.seibe.speed.common.Proto.UPDATE(cardList)) == false) {
-				throw "error";
+				this.onFail();
 				return;
 			}
 		}
@@ -1531,7 +1605,7 @@ jp.seibe.speed.client.state.IngameState.prototype = {
 		} else if(this._client.type == 0 && this._client.card.isStalemate()) {
 			this._startTime = new Date().getTime() + 5000 + this._client.delayTime;
 			if(this._client.socket.send(jp.seibe.speed.common.Proto.START(this._startTime + this._client.diffTime)) == false) {
-				throw "error";
+				this.onFail();
 				return;
 			}
 		}
@@ -1539,6 +1613,11 @@ jp.seibe.speed.client.state.IngameState.prototype = {
 	,stop: function() {
 		this._client.dom.disableDrag();
 		this._client.dom.disableStamp();
+	}
+	,onFail: function() {
+		this._client.dom.drawDialog("");
+		this._client.dom.notify("通信に失敗しました。",3000);
+		this._client.change(jp.seibe.speed.common.ClientState.START);
 	}
 	,onDragCard: function(e) {
 		switch(e[1]) {
@@ -1571,7 +1650,7 @@ jp.seibe.speed.client.state.IngameState.prototype = {
 			return $r;
 		}(this)) || now - this._prevDragTime > 33) {
 			if(this._client.socket.send(jp.seibe.speed.common.Proto.DRAG(e)) == false) {
-				throw "error";
+				this.onFail();
 				return;
 			}
 			this._prevDragTime = now;
@@ -1579,7 +1658,7 @@ jp.seibe.speed.client.state.IngameState.prototype = {
 	}
 	,onTapStamp: function(stampType) {
 		if(this._client.socket.send(jp.seibe.speed.common.Proto.STAMP(stampType)) == false) {
-			throw "error";
+			this.onFail();
 			return;
 		}
 	}
@@ -1598,7 +1677,6 @@ jp.seibe.speed.client.state.MatchState.prototype = {
 		if(res != null) switch(res[1]) {
 		case 4:
 			var clientType = res[2];
-			haxe.Log.trace("client-type:",{ fileName : "MatchState.hx", lineNumber : 27, className : "jp.seibe.speed.client.state.MatchState", methodName : "update", customParams : [clientType]});
 			this._client.type = clientType;
 			this._client.dom.setClientType(clientType);
 			this._client.change(jp.seibe.speed.common.ClientState.NEGOTIATE);
@@ -1637,7 +1715,6 @@ jp.seibe.speed.client.state.NegotiateState.prototype = {
 				var now = new Date().getTime();
 				var delay = now - this._prevPingTime;
 				var diff = (timestamp * 2 - this._prevPingTime - now) / 2;
-				haxe.Log.trace("recieve PONG: ",{ fileName : "NegotiateState.hx", lineNumber : 47, className : "jp.seibe.speed.client.state.NegotiateState", methodName : "update", customParams : [delay,timestamp,now,diff]});
 				this._client.delayTime += delay;
 				this._client.diffTime += diff;
 				if(this._pingCount < this.PING_MAX) {
@@ -1670,13 +1747,13 @@ jp.seibe.speed.client.state.StartState.prototype = {
 		this._client.dom.getElement("#stage, #stamp, .start-loader").addClass("hidden");
 		this._client.dom.getElement("#start, .start-buttons").removeClass("hidden");
 		this._client.dom.getElement("#start-button-online").on("click",function(e) {
-			haxe.Log.trace("click!",{ fileName : "StartState.hx", lineNumber : 22, className : "jp.seibe.speed.client.state.StartState", methodName : "start"});
 			_g._client.change(jp.seibe.speed.common.ClientState.CONNECT);
 		});
 	}
 	,update: function() {
 	}
 	,stop: function() {
+		this._client.dom.getElement("#start-button-online").off("click");
 	}
 };
 jp.seibe.speed.common = {};
@@ -1856,6 +1933,9 @@ Math.isNaN = function(i1) {
 String.__name__ = true;
 Array.__name__ = true;
 Date.__name__ = ["Date"];
+window.RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+window.RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
+window.RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
 var q = window.Zepto;
 js.Zepto = q;
 haxe.ds.ObjectMap.count = 0;

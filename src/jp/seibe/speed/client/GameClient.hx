@@ -51,8 +51,6 @@ class GameClient
 	{
 		if (_state != null) _state.stop();
 		
-		trace(to);
-		
 		switch(to) {
 			case ClientState.START:		_state = new StartState(this);
 			case ClientState.CONNECT:	_state = new ConnectState(this);

@@ -44,7 +44,7 @@ class NegotiateState implements IState
 					var now:Float = Date.now().getTime();
 					var delay:Float = now - _prevPingTime; //往復遅延
 					var diff:Float = (timestamp * 2 - _prevPingTime - now) / 2; //相対的な時計の誤差
-					trace("recieve PONG: ", delay, timestamp, now, diff);
+					//trace("recieve PONG: ", delay, timestamp, now, diff);
 					_client.delayTime += delay;
 					_client.diffTime += diff;
 					

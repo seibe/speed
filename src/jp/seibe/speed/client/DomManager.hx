@@ -141,7 +141,7 @@ class DomManager
 	public function drawStamp(stampType:Int):Void
 	{
 		var stamp:Zepto = _stampList[stampType].clone();
-		trace("clone");
+		
 		stamp.css( {
 			left: Std.string(Std.int(Math.random() * (_window.innerWidth - 120))) + "px"
 		});

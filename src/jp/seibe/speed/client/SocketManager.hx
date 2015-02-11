@@ -1,5 +1,10 @@
 package jp.seibe.speed.client;
+import haxe.Json;
 import jp.seibe.speed.common.Speed;
+import js.html.rtc.DataChannel;
+import js.html.rtc.IceCandidate;
+import js.html.rtc.PeerConnection;
+import js.html.rtc.SessionDescription;
 import js.html.Uint8Array;
 import js.html.WebSocket;
 import haxe.Timer;
@@ -7,16 +12,24 @@ import haxe.Timer;
 enum SocketStatus {
 	CLOSE;
 	CONNECTING;
-	CONNECT;
+	MATCHING;
+	CONNECT_WS;
+	CONNECT_ALL;
 }
 
 class SocketManager
 {
+	private var WS_URL(default, null):String = "ws://seibe.jp:8080/ws/speed";
+	
 	private static var _instance:SocketManager;
+	private var _ws:WebSocket;
+	private var _pc:PeerConnection;
+	private var _dc:DataChannel;
+	
 	private var _status:SocketStatus;
+	private var _clientType:Int;
 	private var _sendDataList:Array<Int>;
 	private var _receiveDataList:Array<Int>;
-	private var _ws:WebSocket;
 	
 	public static function getInstance():SocketManager
 	{
@@ -36,36 +49,36 @@ class SocketManager
 	
 	public function connect(callback:Bool->Void):Void
 	{
+		if (_status != SocketStatus.CLOSE) close();
+		
 		// 状態：接続試行中
 		_status = SocketStatus.CONNECTING;
-		trace("websocket: connecting start");
 		
-		// バイナリモードでの接続を試みる
-		_ws = new WebSocket("ws://seibe.jp:8080/ws/speed");
-		_ws.binaryType = 'arraybuffer';
+		// ピアコネクションを作成する
+		_pc = new PeerConnection({"iceServers": [ { "url": "stun:stun.l.google.com:19302" } ]});
+		_pc.onicecandidate = onIceCandidate;
+		_pc.ondatachannel = onDataChannel;
 		
+		// シグナリングサーバーへ接続する
+		_ws = new WebSocket(WS_URL);
 		_ws.onopen = function(e:Dynamic):Void {
 			// タイムアウトしていたら中断する
 			if (_status == SocketStatus.CLOSE) return;
 			
-			// 状態：接続
-			_status = SocketStatus.CONNECT;
+			// 状態：マッチング中
+			_status = SocketStatus.MATCHING;
 			
 			// 接続完了を通知する
 			callback(true);
-			_ws.onerror = this.onError;
-			trace("websocket: connected");
+			_ws.onerror = this.onErrorWs;
 		};
-		
-		_ws.onclose = this.onClose;
-		_ws.onmessage = this.onReceive;
-		
+		_ws.onclose = this.onCloseWs;
+		_ws.onmessage = this.onReceiveWs;
 		_ws.onerror = function(e:Dynamic):Void {
 			// 接続途中にエラーが出たら閉じる
 			if (_status == SocketStatus.CONNECTING) {
 				callback(false);
 				close();
-				trace("websocket: connecting error");
 			}
 		};
 		
@@ -74,7 +87,6 @@ class SocketManager
 			if (_status == SocketStatus.CONNECTING) {
 				callback(false);
 				close();
-				trace("websocket: connecting timeout");
 			}
 		}, 3000);
 	}
@@ -82,7 +94,7 @@ class SocketManager
 	public function send(msg:Proto):Bool
 	{
 		// 接続前なら破棄
-		if (_status != SocketStatus.CONNECT) {
+		if (_status != SocketStatus.CONNECT_ALL) {
 			return false;
 		}
 		
@@ -211,9 +223,9 @@ class SocketManager
 				data[i] = (i * 2 + 1) == dataLength ? _sendDataList[i * 2] << 4 : (_sendDataList[i * 2] << 4) + _sendDataList[i * 2 + 1];
 			}
 			
-			//trace("send (" + byteLength + " byte)");
-			if (_ws.send(data) == false) {
-				trace("send-error: 1");
+			try {
+				_dc.send(data);
+			} catch (e:Dynamic) {
 				close();
 				return false;
 			}
@@ -227,10 +239,8 @@ class SocketManager
 	public function receive():Null<Proto>
 	{
 		if (_receiveDataList.length == 0) return null;
-		//trace("残りパケット: " + _receiveDataList.length);
 		
 		var header:Int = _receiveDataList.shift();
-		//trace("header: " + header);
 		switch (header) {
 			case RemoteProto.PING:
 				var flag:Int = _receiveDataList.shift();
@@ -352,39 +362,136 @@ class SocketManager
 	public function close():Void
 	{
 		// 接続が開いていたら閉じる
-		if (_status == SocketStatus.CONNECT) {
-			_ws.onopen = _ws.onerror = null;
+		if (_status != SocketStatus.CLOSE) {
 			_ws.close();
+			_dc.close();
+			_pc.close();
 		}
 		
 		_status = SocketStatus.CLOSE;
 		_ws = null;
+		_dc = null;
+		_pc = null;
 		_sendDataList = new Array<Int>();
 		_receiveDataList = new Array<Int>();
 	}
 	
-	private function onReceive(e:{data:Dynamic}):Void
+	private function initDataChannel(dc:DataChannel):Void
+	{
+		dc.binaryType = "arraybuffer";
+		
+		dc.onopen = function(e:Dynamic):Void {
+			_status = SocketStatus.CONNECT_ALL;
+			_receiveDataList.push(RemoteProto.MATCH);
+			_receiveDataList.push(_clientType);
+		};
+		dc.onclose = onCloseDc;
+		dc.onmessage = onReceiveDc;
+		dc.onerror = onErrorDc;
+	}
+	
+	/* callbacks */
+	
+	private function onCreateSdp(sd:SessionDescription):Bool
+	{
+		// 生成されたセッション情報を登録する
+		_pc.setLocalDescription(sd, function():Bool {
+			// 生成されたセッション情報を シグナリングサーバーを通して転送する
+			return _ws.send( Json.stringify( { type: "sdp", data: sd } ) );
+		}, onFailure);
+		return true;
+	}
+	
+	private function onFailure(err:String):Bool
+	{
+		trace(err);
+		return false;
+	}
+	
+	private function onIceCandidate(evt:Dynamic):Void
+	{
+		if (evt && evt.candidate) {
+			// 生成された経路情報を シグナリングサーバーを通して転送する
+			_ws.send( Json.stringify( { type: "candidate", data: evt.candidate } ) );
+		}
+	}
+	
+	private function onDataChannel(evt:Dynamic):Void
+	{
+		if (evt && evt.channel) {
+			// DataChannelを初期化する
+			_dc = evt.channel;
+			initDataChannel(_dc);
+		}
+	}
+	
+	private function onReceiveWs(e:Dynamic):Void
+	{
+		var msg: { type:String, data:Dynamic } = Json.parse(e.data);
+		
+		switch (msg.type) {
+			case "match":
+				// 役（先攻or後攻）を受け取る
+				_clientType = msg.data ? 1 : 2;
+				_status = SocketStatus.CONNECT_WS;
+				if (_clientType == 1) {
+					// 先攻ならば、DataChannelを初期化する
+					_dc = _pc.createDataChannel("speedDataChannel");
+					initDataChannel(_dc);
+					
+					// 先攻ならば、Offerを作成する
+					_pc.createOffer(onCreateSdp, onFailure);
+				}
+				
+			case "sdp":
+				// セッション情報を受け取る
+				var sd:SessionDescription = new SessionDescription(msg.data);
+				_pc.setRemoteDescription(sd, function():Bool {
+					// 後攻ならば、Answerを作成する
+					if (sd.type == "offer") _pc.createAnswer(onCreateSdp, onFailure);
+					return true;
+				}, onFailure);
+				
+			case "candidate":
+				// 経路情報を受け取る
+				var candidate:IceCandidate = new IceCandidate(msg.data);
+				_pc.addIceCandidate(candidate);
+				
+			default:
+				throw "error";
+		}
+	}
+	
+	private function onCloseWs(e:Dynamic):Void
+	{
+		trace("ws: close");
+	}
+	
+	private function onErrorWs(e:Dynamic):Void
+	{
+		throw "error";
+	}
+	
+	private function onReceiveDc(e:{data:Dynamic}):Void
 	{
 		var bytes:Uint8Array = new Uint8Array(e.data);
 		for (i in 0...bytes.byteLength) {
-			//trace(bytes[i]);
 			_receiveDataList.push(bytes[i] >> 4);
 			_receiveDataList.push(bytes[i] & 0xf);
 		}
-		
-		//trace("receive: (" + bytes.byteLength + " byte)");
 	}
 	
-	private function onClose(e:Dynamic):Void
+	private function onCloseDc(e:Dynamic):Void
 	{
-		_status = SocketStatus.CLOSE;
+		trace("dc: close");
 	}
 	
-	private function onError(e:Dynamic):Void
+	private function onErrorDc(e:Dynamic):Void
 	{
-		_status = SocketStatus.CLOSE;
-		throw "実行中にソケット接続が閉じられました。";
+		throw "error";
 	}
+	
+	/* others */
 	
 	private function posToInt(pos:CardPos):Int
 	{
@@ -402,6 +509,14 @@ class SocketManager
 		if (data < 2)		return CardPos.TALON(data);
 		else if (data < 4)	return CardPos.FIELD(data - 2);
 		return CardPos.HAND( Std.int((data - 4) / 4), (data - 4) % 4 );
+	}
+	
+	/* magic */
+	
+	private static function __init__() : Void untyped {
+		window.RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
+		window.RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
+		window.RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
 	}
 	
 }
