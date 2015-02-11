@@ -6,13 +6,20 @@ import haxe.EnumTools;
 
 class CardManager
 {
+	private static var _instance:CardManager;
 	private var _isInit:Bool;
 	private var _fieldCardList:Vector<Value<CardSuit> >;
 	private var _talonCardList:Vector<Array<CardSuit> >;
 	private var _talonCardLength:Vector<Value<Int> >;
 	private var _handCardList:Vector<Vector<Value<CardSuit> > >;
+	
+	public static function getInstance():CardManager
+	{
+		if (_instance == null) _instance = new CardManager();
+		return _instance;
+	}
 
-	public function new() 
+	private function new() 
 	{
 		_isInit = false;
 		
@@ -160,7 +167,7 @@ class CardManager
 			}
 		}
 		
-		return diff.length == 0 ? null : diff;
+		return diff;
 	}
 	
 	public function getTalonLength():Array<Int>

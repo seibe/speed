@@ -12,12 +12,19 @@ enum SocketStatus {
 
 class SocketManager
 {
+	private static var _instance:SocketManager;
 	private var _status:SocketStatus;
 	private var _sendDataList:Array<Int>;
 	private var _receiveDataList:Array<Int>;
 	private var _ws:WebSocket;
 	
-	public function new() 
+	public static function getInstance():SocketManager
+	{
+		if (_instance == null) _instance = new SocketManager();
+		return _instance;
+	}
+	
+	private function new() 
 	{
 		// 状態：未接続
 		_status = SocketStatus.CLOSE;
@@ -217,7 +224,7 @@ class SocketManager
 		return true;
 	}
 	
-	public function receive():Proto
+	public function receive():Null<Proto>
 	{
 		if (_receiveDataList.length == 0) return null;
 		//trace("残りパケット: " + _receiveDataList.length);

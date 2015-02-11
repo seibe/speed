@@ -40,28 +40,14 @@ enum CardDragEvent {
 	DRAG_CANCEL(pos:CardPos);
 }
 
-enum GameClientState {
-	INIT;
-	INITED;
-	CONNECT;
-	CONNECTING;
-	CONNECTED;
-	MATCHING;
-	NEGOTIATE;
-	NEGOTIATING;
-	NEGOTIATED;
-	INGAME_INIT;
-	INGAME_LOOP;
-	INGAME_START(timestamp:Float);
-	FINISHED;
-	ERROR(prev:GameClientState);
-	NOTHING;
-}
-
-enum ClientScene {
+enum ClientState {
 	START;
-	CONNECTING;
-	INGAME(clientType:ClientType);
+	CONNECT;
+	MATCH;
+	NEGOTIATE;
+	INGAME;
+	FINISH;
+	NOTHING;
 }
 
 @:enum

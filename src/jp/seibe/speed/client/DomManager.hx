@@ -1,9 +1,7 @@
 package jp.seibe.speed.client;
+import jp.seibe.speed.common.Speed;
 import haxe.ds.Vector;
 import haxe.Timer;
-import jp.seibe.lib.stopwatch.Stopwatch;
-import jp.seibe.speed.client.DomManager.Point;
-import jp.seibe.speed.common.Speed;
 import js.Browser;
 import js.html.DOMWindow;
 import js.Zepto;
@@ -15,7 +13,8 @@ typedef Point = {
 
 class DomManager
 {
-	private var _clientType:ClientType;
+	private static var _instance:DomManager;
+	
 	private var _window:DOMWindow;
 	private var _notify:Zepto;
 	private var _notifyTimer:Timer;
@@ -34,18 +33,15 @@ class DomManager
 	private var _dragIdMap:Map<Zepto, Int>;
 	private var _dragPointMap:Map<Zepto, Point>;
 	private var _dragCount:Vector<Int>;
-	private var _watch:Stopwatch;
-	private var _watchAction:Vector<Stopwatch>;
-	private var _actionCount:Vector<Int>;
-	private var _actionTime:Vector<Float>;
-	private var _successActionCount:Vector<Int>;
-	private var _changeSceneFunc:GameClientState->Void;
+	private var _clientType:ClientType;
 	
-	private static inline function _(selector:String):Zepto {
-		return untyped $(selector);
+	public static function getInstance():DomManager
+	{
+		if (_instance == null) _instance = new DomManager();
+		return _instance;
 	}
 
-	public function new() 
+	private function new() 
 	{
 		_window = Browser.window;
 		_notify = _("#notify");
@@ -75,96 +71,29 @@ class DomManager
 			_cardSrcMap.set(CardSuit.DIAMOND(i), "img/card/d" + istr + ".png");
 			_cardSrcMap.set(CardSuit.HEART(i), "img/card/h" + istr + ".png");
 		}
-		
-		// スタート画面に移動する
-		setScene(ClientScene.START);
 	}
 	
-	public function on(callback:GameClientState-> Void):Void
+	public function getElement(selector:String):Zepto
 	{
-		_changeSceneFunc = callback;
+		return _(selector);
 	}
 	
-	public function setScene(scene:ClientScene):Void
+	public function setClientType(clientType:ClientType):Void
 	{
-		switch (scene) {
-			case ClientScene.START:
-				// スタート画面に移る
-				_("#stage, .start-loader").addClass("hidden");
-				_("#start, .start-buttons").removeClass("hidden");
-				_("#start-button-online").on("click", function(e:ZeptoTouchEvent):Void {
-					trace("click!");
-					if (_changeSceneFunc != null) _changeSceneFunc(GameClientState.CONNECT);
-				});
-				
-				if (_consoleTimer != null) _consoleTimer.stop();
-				
-			case ClientScene.CONNECTING:
-				// マッチング中
-				_("#stage, .start-buttons").addClass("hidden");
-				_("#start, .start-loader").removeClass("hidden");
-				
-				if (_consoleTimer != null) _consoleTimer.stop();
-				
-			case ClientScene.INGAME(clientType):
-				// 対戦画面に移る
-				_("#start").addClass("hidden");
-				_("#stage").removeClass("hidden");
-				
-				// ホストorゲスト指定
-				_clientType = clientType;
-				_talonLength = new Vector<Zepto>(2);
-				_cardDomMap = new Map<CardPos, Zepto>();
-				for (i in 0...2) {
-					var pre:String = i == _clientType ? "#stage-player-" : "#stage-enemy-";
-					_talonLength[i] = _(pre + "talon-length");
-					_cardDomMap.set( CardPos.TALON(i), _(pre + "talon") );
-					_cardDomMap.set( CardPos.FIELD(i ^ _clientType), _("#stage-field-" + Std.string(i)) );
-					
-					for (j in 0...4) {
-						_cardDomMap.set( CardPos.HAND(i, j), _(pre + "hand-" + Std.string(j)) );
-					}
-				}
-				
-				// 場の初期化
-				for (i in 0...2) {
-					drawCardAt(CardPos.FIELD(i), CardSuit.NONE);
-				}
-				
-				// デバッグ用表示
-				/*
-				_watch = new Stopwatch();
-				_watchAction = new Vector<Stopwatch>(6);
-				for (i in 0..._watchAction.length) _watchAction[i] = new Stopwatch();
-				_dragCount = new Vector<Int>(2);
-				_actionCount = new Vector<Int>(2);
-				_actionTime = new Vector<Float>(2);
-				_successActionCount = new Vector<Int>(2);
-				for (i in 0...2) {
-					_dragCount[i] = 0;
-					_actionCount[i] = 0;
-					_actionTime[i] = 0;
-					_successActionCount[i] = 0;
-				}
-				_watch.start();
-				_watchAction[3].start();
-				
-				_consoleTimer = new Timer(100);
-				_consoleTimer.run = traceConsole;
-				*/
+		// ホストorゲスト指定
+		_clientType = clientType;
+		_talonLength = new Vector<Zepto>(2);
+		_cardDomMap = new Map<CardPos, Zepto>();
+		for (i in 0...2) {
+			var pre:String = i == _clientType ? "#stage-player-" : "#stage-enemy-";
+			_talonLength[i] = _(pre + "talon-length");
+			_cardDomMap.set( CardPos.TALON(i), _(pre + "talon") );
+			_cardDomMap.set( CardPos.FIELD(i ^ _clientType), _("#stage-field-" + Std.string(i)) );
+			
+			for (j in 0...4) {
+				_cardDomMap.set( CardPos.HAND(i, j), _(pre + "hand-" + Std.string(j)) );
+			}
 		}
-	}
-	
-	private function traceConsole():Void
-	{
-		_console.html(
-			"経過時間：　" + Std.string(_watch.now) + " 秒<br />" +
-			"操作数(全て)： 1P " + Std.string(_actionCount[0]) + " 回　2P " + Std.string(_actionCount[1]) + " 回<br />" +
-			"操作数(成功)： 1P " + Std.string(_successActionCount[0]) + " 回　2P " + Std.string(_successActionCount[1]) + " 回<br />" +
-			"操作時間(成功)：　1P " + Std.string(_actionTime[0]) + " 秒　2P " + Std.string(_actionTime[1]) + " 秒<br />" +
-			"無操作時間：　" + Std.string(_watchAction[3].now) + " 秒<br />" +
-			"マルチタッチ：　1P " + Std.string(_watchAction[4].now) + " 秒　2P " + Std.string(_watchAction[5].now) + " 秒"
-		);
 	}
 	
 	public function notify(text:String, ms:Int):Void
@@ -489,6 +418,10 @@ class DomManager
 		}
 		
 		return null;
+	}
+	
+	private static inline function _(selector:String):Zepto {
+		return untyped $(selector);
 	}
 	
 }

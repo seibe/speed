@@ -19,7 +19,7 @@ class Main
 	private function init(e:Dynamic):Void
 	{
 		_client = new GameClient();
-		_client.run();
+		_client.start();
 	}
 	
 }
