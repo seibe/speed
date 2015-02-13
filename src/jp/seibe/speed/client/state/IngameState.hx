@@ -57,9 +57,6 @@ class IngameState implements IState
 			var now:Float = Date.now().getTime();
 			if (_startTime > now) {
 				// カウントダウン中
-				var msg:String = Std.string( Std.int((_startTime - now) / 1000) + 1 );
-				_client.dom.drawDialog(msg);
-				
 				var res:Null<Proto> = _client.socket.receive();
 				while (res != null) {
 					switch (res)
@@ -193,6 +190,16 @@ class IngameState implements IState
 				onFail();
 				return;
 			}
+		}
+	}
+	
+	public function draw():Void 
+	{
+		if (_startTime > 0) {
+			// カウントダウン中
+			var now:Float = Date.now().getTime();
+			var msg:String = Std.string( Std.int((_startTime - now) / 1000) + 1 );
+			_client.dom.drawDialog(msg);
 		}
 	}
 	

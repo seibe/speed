@@ -28,6 +28,11 @@ class StartState implements IState
 		
 	}
 	
+	public function draw():Void 
+	{
+		
+	}
+	
 	public function stop():Void 
 	{
 		_client.dom.getElement("#start-button-online").off("click");

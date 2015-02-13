@@ -5,6 +5,7 @@ import jp.seibe.speed.client.SocketManager;
 import jp.seibe.speed.client.state.*;
 import jp.seibe.speed.common.Speed;
 import haxe.Timer;
+import js.Browser;
 
 class GameClient
 {
@@ -20,6 +21,7 @@ class GameClient
 	
 	private var _state:Null<IState>;
 	private var _timer:Null<Timer>;
+	private var _isDrawSync:Bool;
 	
 	public function new()
 	{
@@ -38,7 +40,12 @@ class GameClient
 	public function start():Void
 	{	
 		_timer = new Timer( Std.int(1000 / FRAME_RATE) );
-		_timer.run = update;
+		_timer.run = onUpdate;
+		
+		_isDrawSync = Browser.window.requestAnimationFrame == null;
+		if (!_isDrawSync) {
+			Browser.window.requestAnimationFrame(onRequestAnimation);
+		}
 	}
 	
 	public function stop():Void
@@ -64,9 +71,25 @@ class GameClient
 		if (_state != null) _state.start();
 	}
 	
-	private function update():Void
+	private function onUpdate():Void
 	{
-		if (_state != null) _state.update();
+		if (_state != null) {
+			_state.update();
+			if (_isDrawSync) _state.draw();
+		}
+	}
+	
+	private function onRequestAnimation(time:Float):Bool
+	{
+		if (_state != null) _state.draw();
+		Browser.window.requestAnimationFrame(onRequestAnimation);
+		return true;
+	}
+	
+	/* magic */
+	
+	private static function __init__() : Void untyped {
+		window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
 	}
 	
 }

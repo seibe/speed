@@ -4,5 +4,6 @@ interface IState
 {
 	public function start():Void;
 	public function update():Void;
+	public function draw():Void;
 	public function stop():Void;
 }

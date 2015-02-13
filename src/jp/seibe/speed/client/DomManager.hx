@@ -339,13 +339,12 @@ class DomManager
 				var id:Int = _dragIdMap.get(target);
 				if (id == null) return;
 				// ドラッグ処理
-				for (touch in e.touches) {
+				for (touch in e.changedTouches) {
 					if (id == touch.identifier) {
 						var beginPoint:Point = _dragPointMap.get(target);
 						var dx:Int = touch.pageX - beginPoint.x;
 						var dy:Int = touch.pageY - beginPoint.y;
 						_dragListener(CardDragEvent.DRAG_MOVE(pos, dx, dy));
-						break;
 					}
 				}
 				

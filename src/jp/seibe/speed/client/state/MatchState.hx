@@ -34,6 +34,11 @@ class MatchState implements IState
 		}
 	}
 	
+	public function draw():Void 
+	{
+		
+	}
+	
 	public function stop():Void 
 	{
 		

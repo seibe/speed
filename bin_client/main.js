@@ -808,7 +808,7 @@ jp.seibe.speed.client.DomManager.prototype = {
 			var id = this._dragIdMap.h[target.__id__];
 			if(id == null) return;
 			var _g1 = 0;
-			var _g2 = e.touches;
+			var _g2 = e.changedTouches;
 			while(_g1 < _g2.length) {
 				var touch = _g2[_g1];
 				++_g1;
@@ -817,7 +817,6 @@ jp.seibe.speed.client.DomManager.prototype = {
 					var dx = touch.pageX - beginPoint.x;
 					var dy = touch.pageY - beginPoint.y;
 					this._dragListener(jp.seibe.speed.common.CardDragEvent.DRAG_MOVE(pos,dx,dy));
-					break;
 				}
 			}
 			break;
@@ -923,7 +922,9 @@ jp.seibe.speed.client.GameClient.__name__ = true;
 jp.seibe.speed.client.GameClient.prototype = {
 	start: function() {
 		this._timer = new haxe.Timer(1000 / this.FRAME_RATE | 0);
-		this._timer.run = $bind(this,this.update);
+		this._timer.run = $bind(this,this.onUpdate);
+		this._isDrawSync = ($_=window,$bind($_,$_.requestAnimationFrame)) == null;
+		if(!this._isDrawSync) window.requestAnimationFrame($bind(this,this.onRequestAnimation));
 	}
 	,change: function(to) {
 		if(this._state != null) this._state.stop();
@@ -952,8 +953,16 @@ jp.seibe.speed.client.GameClient.prototype = {
 		}
 		if(this._state != null) this._state.start();
 	}
-	,update: function() {
-		if(this._state != null) this._state.update();
+	,onUpdate: function() {
+		if(this._state != null) {
+			this._state.update();
+			if(this._isDrawSync) this._state.draw();
+		}
+	}
+	,onRequestAnimation: function(time) {
+		if(this._state != null) this._state.draw();
+		window.requestAnimationFrame($bind(this,this.onRequestAnimation));
+		return true;
 	}
 };
 jp.seibe.speed.client.Main = function() {
@@ -1438,6 +1447,8 @@ jp.seibe.speed.client.state.ConnectState.prototype = {
 	}
 	,update: function() {
 	}
+	,draw: function() {
+	}
 	,stop: function() {
 	}
 };
@@ -1457,6 +1468,8 @@ jp.seibe.speed.client.state.FinishState.prototype = {
 		this._client.change(jp.seibe.speed.common.ClientState.START);
 	}
 	,update: function() {
+	}
+	,draw: function() {
 	}
 	,stop: function() {
 	}
@@ -1499,8 +1512,6 @@ jp.seibe.speed.client.state.IngameState.prototype = {
 		if(this._startTime > 0) {
 			var now = new Date().getTime();
 			if(this._startTime > now) {
-				var msg = Std.string(((this._startTime - now) / 1000 | 0) + 1);
-				this._client.dom.drawDialog(msg);
 				var res = this._client.socket.receive();
 				while(res != null) {
 					switch(res[1]) {
@@ -1520,18 +1531,18 @@ jp.seibe.speed.client.state.IngameState.prototype = {
 						break;
 					case 8:
 						var diff = res[2];
-						haxe.Log.trace("NOTICE: カウントダウン中に同期通知",{ fileName : "IngameState.hx", lineNumber : 82, className : "jp.seibe.speed.client.state.IngameState", methodName : "update"});
+						haxe.Log.trace("NOTICE: カウントダウン中に同期通知",{ fileName : "IngameState.hx", lineNumber : 79, className : "jp.seibe.speed.client.state.IngameState", methodName : "update"});
 						if(this._client.type == 1) {
 							this._client.card.update(diff);
 							this._client.dom.drawCard(this._client.card.getDiff());
 						}
 						break;
 					case 6:
-						haxe.Log.trace("NOTICE: カウントダウン中に終了通知",{ fileName : "IngameState.hx", lineNumber : 90, className : "jp.seibe.speed.client.state.IngameState", methodName : "update"});
+						haxe.Log.trace("NOTICE: カウントダウン中に終了通知",{ fileName : "IngameState.hx", lineNumber : 87, className : "jp.seibe.speed.client.state.IngameState", methodName : "update"});
 						this._client.change(jp.seibe.speed.common.ClientState.FINISH);
 						return;
 					default:
-						haxe.Log.trace("NOTICE: カウントダウン中に通知",{ fileName : "IngameState.hx", lineNumber : 96, className : "jp.seibe.speed.client.state.IngameState", methodName : "update", customParams : [res]});
+						haxe.Log.trace("NOTICE: カウントダウン中に通知",{ fileName : "IngameState.hx", lineNumber : 93, className : "jp.seibe.speed.client.state.IngameState", methodName : "update", customParams : [res]});
 					}
 					res = this._client.socket.receive();
 				}
@@ -1610,6 +1621,13 @@ jp.seibe.speed.client.state.IngameState.prototype = {
 			}
 		}
 	}
+	,draw: function() {
+		if(this._startTime > 0) {
+			var now = new Date().getTime();
+			var msg = Std.string(((this._startTime - now) / 1000 | 0) + 1);
+			this._client.dom.drawDialog(msg);
+		}
+	}
 	,stop: function() {
 		this._client.dom.disableDrag();
 		this._client.dom.disableStamp();
@@ -1685,6 +1703,8 @@ jp.seibe.speed.client.state.MatchState.prototype = {
 			throw "受信エラー";
 		}
 	}
+	,draw: function() {
+	}
 	,stop: function() {
 	}
 };
@@ -1733,6 +1753,8 @@ jp.seibe.speed.client.state.NegotiateState.prototype = {
 			res = this._client.socket.receive();
 		}
 	}
+	,draw: function() {
+	}
 	,stop: function() {
 	}
 };
@@ -1751,6 +1773,8 @@ jp.seibe.speed.client.state.StartState.prototype = {
 		});
 	}
 	,update: function() {
+	}
+	,draw: function() {
 	}
 	,stop: function() {
 		this._client.dom.getElement("#start-button-online").off("click");
@@ -1933,6 +1957,7 @@ Math.isNaN = function(i1) {
 String.__name__ = true;
 Array.__name__ = true;
 Date.__name__ = ["Date"];
+window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
 window.RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
 window.RTCIceCandidate = window.RTCIceCandidate || window.mozRTCIceCandidate;
 window.RTCSessionDescription = window.RTCSessionDescription || window.mozRTCSessionDescription;
